@@ -1,2 +1,7 @@
 # ignore the data files
 data/*
+
+# vim swap files
+*.swp
+*.swo
+*.swr
