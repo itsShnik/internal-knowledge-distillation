@@ -11,8 +11,8 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 #----------------------------------------
 #--------- Model related imports --------
 #----------------------------------------
-from modules import *
-from policy_modules import *
+from modules.resnet26 import resnet26
+from policy_modules.resnet8 import resnet8
 
 #----------------------------------------
 #--------- Dataloader related imports ---
@@ -22,6 +22,8 @@ from dataloaders.build import make_dataloader, build_dataset
 #----------------------------------------
 #--------- Imports from common ----------
 #----------------------------------------
+from common.utils import optim_SGD
+from common.utils import lr_scheduler_StepLR
 from common.trainer import train
 from common.metrics.train_metrics import TrainMetrics
 from common.metrics.val_metrics import ValMetrics
@@ -66,7 +68,7 @@ def train_net(args, config):
         config.GPUS = str(local_rank)
 
         # initialize the model and put it to GPU
-        model = eval(config.MODULE)(config)
+        model = eval(config.MODULE)(num_class=config.NUM_CLASSES)
         model = model.cuda()
 
         # dataloaders for training, val and test set
@@ -75,13 +77,6 @@ def train_net(args, config):
 
         # set the batch_size
         batch_size = world_size * config.TRAIN.BATCH_IMAGES
-
-        # config the learning rates and schedulars
-        # FIXME: group the parameters according to LR
-        try:
-            base_lr, optimizer = eval(f'optim_{config.TRAIN.OPTIMIZER}')(config, model)
-        except:
-            raise ValueError(f'{config.TRAIN.OPTIMIZER}, not supported!!')
 
     else:
         # single GPU training
@@ -100,13 +95,20 @@ def train_net(args, config):
         # set the batch size
         batch_size = config.TRAIN.BATCH_IMAGES
 
-        # config the learning rates and schedulars
-        # FIXME: group the parameters according to LR
-        try:
-            base_lr, optimizer = eval(f'optim_{config.TRAIN.OPTIMIZER}')(config, model)
-        except:
-            raise ValueError(f'{config.TRAIN.OPTIMIZER}, not supported!!')
+    # set up the initial learning rate, proportional to batch_size
+    initial_lr = batch_size * config.TRAIN.LR
 
+    # configure the optimizer
+    try:
+        optimizer = eval(f'optim_{config.TRAIN.OPTIMIZER}')(model, initial_lr, config.TRAIN.MOMENTUM, config.TRAIN.WEIGHT_DECAY)
+    except:
+        raise ValueError(f'{config.TRAIN.OPTIMIZER}, not supported!!')
+
+    # config the learning rates and schedulars
+    try:
+        lr_scheduler = eval(f'lr_scheduler_{config.TRAIN.LR_SCHEDULER}')(optimizer, step_size=config.TRAIN.STEP_SIZE, gamma=config.TRAIN.GAMMA)
+    except:
+        raise ValueError(f'{config.TRAIN.LR_SCHEDULER}, not supported!!')
 
     # Set up the metrics
     train_metrics = TrainMetrics(config, allreduce=args.dist)
@@ -119,7 +121,6 @@ def train_net(args, config):
     # epoch end callbacks
     epoch_end_callbacks = [Checkpoint(config), val_metrics]
 
-    #TODO: Set up the learning rate schedulars
     #TODO: Broadcast the parameters and optimizer state from rank 0 before the start of training
 
     # At last call the training function from trainer
