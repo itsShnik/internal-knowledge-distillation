@@ -18,4 +18,4 @@ def resnet8(num_class=24, blocks=BasicBlock):
 
     layers = [1,1,1]
 
-    return ResNet(blocks, layers, num_class)
+    return ResNet(blocks, layers, num_class, training_strategy='standard')
