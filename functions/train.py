@@ -1,7 +1,6 @@
 #----------------------------------------
 #--------- Torch related imports --------
 #----------------------------------------
-
 import numpy as np
 import torch
 import torch.nn
@@ -24,6 +23,9 @@ from dataloaders.build import make_dataloader, build_dataset
 #--------- Imports from common ----------
 #----------------------------------------
 from common.trainer import train
+from common.metrics.train_metrics import TrainMetrics
+from common.metrics.val_metrics import ValMetrics
+from common.callbacks.epoch_end_callbacks import ValidationMonitor, Checkpoint
 
 def train_net(args, config):
 
@@ -67,10 +69,9 @@ def train_net(args, config):
         model = eval(config.MODULE)(config)
         model = model.cuda()
 
-        # dataloaders for training and test set
+        # dataloaders for training, val and test set
         train_loader = make_dataloader(config, mode='train', distributed=True, num_replicas=world_size, rank=rank)
-
-        test_loader = make_dataloader(config, mode='test', distributed=True, num_replicas=world_size, rank=rank)
+        val_loader = make_dataloader(config, mode='val', distributed=True, num_replicas=world_size, rank=rank)
 
         # set the batch_size
         batch_size = world_size * config.TRAIN.BATCH_IMAGES
@@ -94,7 +95,7 @@ def train_net(args, config):
 
         # dataloaders for training and test set
         train_loader = make_dataloader(config, mode='train', distributed=False)
-        test_loader = make_dataloader(config, mode='test', distributed=False)
+        val_loader = make_dataloader(config, mode='val', distributed=False)
 
         # set the batch size
         batch_size = config.TRAIN.BATCH_IMAGES
@@ -107,8 +108,19 @@ def train_net(args, config):
             raise ValueError(f'{config.TRAIN.OPTIMIZER}, not supported!!')
 
 
+    # Set up the metrics
+    train_metrics = TrainMetrics(config, allreduce=args.dist)
+    val_metrics = ValMetrics(config, allreduce=args.dist)
+
+    # Set up the callbacks
+    # batch end callbacks
+    batch_end_callbacks = None
+
+    # epoch end callbacks
+    epoch_end_callbacks = [Checkpoint(config), val_metrics]
+
     #TODO: Set up the learning rate schedulars
     #TODO: Broadcast the parameters and optimizer state from rank 0 before the start of training
 
     # At last call the training function from trainer
-    train(config=config, net=model, optimizer=optimizer, lr_scheduler=lr_scheduler, rank=rank)
+    train(config=config, net=model, optimizer=optimizer, train_loader=train_loader, train_metrics=train_metrics, val_loader=val_loader, val_metrics=val_metrics, lr_scheduler=lr_scheduler, rank=rank, batch_end_callbacks=batch_end_callbacks, epoch_end_callbacks=epoch_end_callbacks)
