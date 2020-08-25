@@ -6,9 +6,14 @@ import time
 from collections import namedtuple
 
 #----------------------------------------
-#--------- Torch related imports
+#--------- Torch related imports --------
 #----------------------------------------
 import torch
+
+#----------------------------------------
+#--------- Local file imports -----------
+#----------------------------------------
+from function.val import do_validation
 
 # Parameter to pass to batch_end_callback
 BatchEndParam = namedtuple('BatchEndParams',
@@ -68,7 +73,7 @@ def train(config,
         end_time = time.time()
 
         # start training
-        for nbatch, (images, labels) in enumerate(train_loader):
+        for nbatch, batch in enumerate(train_loader):
             global_steps = len(train_loader) * epoch + nbatch
 
             # record time
@@ -76,7 +81,7 @@ def train(config,
 
             # transfer data to GPU
             data_transfer_time = time.time()
-            batch = to_cuda(batch)
+            images, labels = to_cuda(batch)
             data_transfer_time = time.time() - data_transfer_time
 
             # clear the gradients
