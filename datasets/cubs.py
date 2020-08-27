@@ -1,5 +1,12 @@
+#----------------------------------------
+#--------- OS related imports -----------
+#----------------------------------------
 import os
 import pandas as pd
+
+#----------------------------------------
+#--------- Torch related imports --------
+#----------------------------------------
 from torchvision.datasets.folder import default_loader
 from torch.utils.data import Dataset
 
