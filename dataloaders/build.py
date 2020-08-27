@@ -1,7 +1,16 @@
+#----------------------------------------
+#--------- Torch related imports --------
+#----------------------------------------
 import torch
-from datasets import *
+
+#----------------------------------------
+#--------- Funcs and Classes for Datasets
+#----------------------------------------
+from datasets.cubs import CUBS
+from datasets.decathlon import decathlon_dataset
 
 DATASETS = {'cubs':CUBS}
+DECATHLON_DATASETS = {'imagenet12', 'cifar100', 'aircraft'}
 
 def build_dataset(dataset_name, *args, **kwargs):
     assert dataset_name in DATASET_CATALOGS, "dataset not in catalogs"
@@ -31,15 +40,20 @@ def make_dataloader(config, dataset=None, mode='train', distributed=False, num_r
     if mode == 'train':
         aspect_grouping = config.TRAIN.ASPECT_GROUPING
         batch_size = config.TRAIN.BATCH_IMAGES * num_gpu
-        shuffle = cfg.TRAIN.SHUFFLE
+        shuffle = config.TRAIN.SHUFFLE
+        splits = config.DATASET.TRAIN_SPLIT
     else:
         aspect_grouping = False
-        batch_size = config.TEST.BATCH_IMAGES * num_gpu
+        batch_size = config.VAL.BATCH_IMAGES * num_gpu
         shuffle = config.VAL.SHUFFLE
+        splits = config.DATASET.VAL_SPLIT
 
     # create a Dataset class object
     if dataset is None:
-        dataset = build_dataset(dataset_name=config.DATASET.DATASET, root=config.DATASET.ROOT_PATH, train=(mode=='train'))
+        if config.DATASET.DATASET_NAME in DECATHLON_DATASETS:
+            dataset = decathlon_dataset(name=config.DATASET.DATASET_NAME, root=config.DATASET.ROOT_PATH, splits=splits)
+        else:
+            dataset = build_dataset(dataset_name=config.DATASET.DATASET, root=config.DATASET.ROOT_PATH, splits=splits)
 
     sampler = make_data_sampler(dataset, shuffle, distributed, num_replicas, rank)
     batch_sampler = make_batch_data_sampler(dataset, sampler, batch_size)
