@@ -61,7 +61,7 @@ def load_from_annotation_files(root, annotation_files):
 
     return image_paths, labels
 
-def create_transforms(name):
+def create_transforms(root, name):
     # Load the means and stds file
     dict_mean_std = pickle.load(open(os.path.join(root, 'decathlon_mean_std.pickle'), 'rb'), encoding='latin1')
     means = dict_mean_std[name + 'mean']
@@ -101,7 +101,7 @@ def decathlon_dataset(name='imagenet12', root='data/decathlon', splits='train+va
     else:
         # annotation files
         annotation_files = []
-        for split in splits.split('+'):
+        for split in splits:
             if split in ['train', 'val']:
                 annotation_files.append(os.path.join(root, 'annotations', f'{name}_{split}.json'))
             else:
@@ -115,7 +115,7 @@ def decathlon_dataset(name='imagenet12', root='data/decathlon', splits='train+va
         pickle.dump((image_paths, labels), open(cache_file_path, 'wb'))
 
     # create transforms
-    transforms = create_transforms(name)
+    transforms = create_transforms(root, name)
 
     # return an ImageFolder object
     return ImageFolder(root, transform=transforms, target_transform=None, index=None, labels=labels, imgs=image_paths)
