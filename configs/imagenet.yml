@@ -1,0 +1,27 @@
+---
+RNG_SEED: -1
+MODULE: 'resnet26'
+GPUS: '1,2,3,4'
+NUM_WORKERS_PER_GPU: 4
+VERSION: 'resnet-adaptive-finetune'
+NUM_CLASSES: 1000
+
+DATASET:
+    DATASET_NAME: 'imagenet12'
+    ROOT_PATH: 'data/decathlon-1.0/'
+    TRAIN_SPLIT: 'train+val'
+    VAL_SPLIT: 'test'
+
+TRAIN:
+    BATCH_IMAGES: 128
+    LR: 5e-4
+    MOMENTUM: 0.9
+    WEIGHT_DECAY: 1e-4
+    OPTIMIZER: 'SGD'
+    LR_SCHEDULER: 'StepLR'
+    ASPECT_GROUPING: False
+    SHUFFLE: False
+    BEGIN_EPOCH: 0
+    END_EPOCH: 110
+    STEP_SIZE: 30
+    GAMMA: 0.1
