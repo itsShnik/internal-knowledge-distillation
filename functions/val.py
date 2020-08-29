@@ -2,7 +2,7 @@
 #--------- Torch related imports --------
 #----------------------------------------
 import torch
-from common.trainer import to_cuda
+from common.utils import to_cuda
 
 @torch.no_grad()
 def do_validation(net, val_loader):
