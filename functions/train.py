@@ -27,7 +27,7 @@ from common.utils import lr_scheduler_StepLR
 from common.trainer import train
 from common.metrics.train_metrics import TrainMetrics
 from common.metrics.val_metrics import ValMetrics
-from common.callbacks.epoch_end_callbacks import ValidationMonitor, Checkpoint
+from common.callbacks.epoch_end_callbacks.checkpoint import Checkpoint
 
 def train_net(args, config):
 
@@ -85,8 +85,8 @@ def train_net(args, config):
         torch.cuda.set_device(0)
 
         # initialize the model and put is to GPU
-        model = eval(config.MODULE)(config)
-        model = mode.cuda()
+        model = eval(config.MODULE)(num_class=config.NUM_CLASSES)
+        model = model.cuda()
 
         # dataloaders for training and test set
         train_loader = make_dataloader(config, mode='train', distributed=False)
