@@ -13,7 +13,8 @@ import torch
 #----------------------------------------
 #--------- Local file imports -----------
 #----------------------------------------
-from function.val import do_validation
+from functions.val import do_validation
+from common.utils import to_cuda
 
 # Parameter to pass to batch_end_callback
 BatchEndParam = namedtuple('BatchEndParams',
@@ -40,15 +41,6 @@ def _multiple_callbacks(callbacks, *args, **kwargs):
     if callbacks:
         callbacks(*args, **kwargs)
 
-def to_cuda(batch):
-    # convert batch: tuple to batch: list
-    batch = list(batch)
-
-    for i in range(len(batch)):
-        assert isinstance(batch[i], torch.Tensor), "Each element of batch is not a tensor"
-            batch[i] = batch[i].cuda(non_blocking=True)
-
-    return batch
 
 def train(config,
         net,
