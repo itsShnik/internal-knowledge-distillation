@@ -12,3 +12,13 @@ def lr_scheduler_StepLR(optimizer, step_size=30, gamma=0.1):
 
     # return an StepLR object
     return torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
+
+def to_cuda(batch):
+    # convert batch: tuple to batch: list
+    batch = list(batch)
+
+    for i in range(len(batch)):
+        assert isinstance(batch[i], torch.Tensor), "Each element of batch is not a tensor"
+        batch[i] = batch[i].cuda(non_blocking=True)
+
+    return batch
