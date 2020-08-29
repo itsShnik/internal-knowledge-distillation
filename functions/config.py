@@ -16,6 +16,7 @@ _C.MODULE = ''
 _C.GPUS = ''
 _C.NUM_WORKERS_PER_GPU = 4
 _C.VERSION = 'adaptive-finetune'
+_C.NUM_CLASSES = 1000
 
 #----------------------------------------
 #--------- Dataset related options ------
@@ -42,12 +43,6 @@ _C.TRAIN.BEGIN_EPOCH = 0
 _C.TRAIN.END_EPOCH = 110
 _C.TRAIN.STEP_SIZE = 30
 _C.TRAIN.GAMMA = 0.1
-
-#----------------------------------------
-#--------- Validation related options ---
-#----------------------------------------
-_C.VAL.SHUFFLE = False
-_C.VAL.BATCH_IMAGES = 128
 
 def update_config(config_file):
     with open(config_file) as f:
