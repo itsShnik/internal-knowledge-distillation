@@ -168,7 +168,7 @@ class ResNet(nn.Module):
                     output = self.blocks[layer][block](x)
                     x = F.relu(residual + output)
 
-	x = self.bn2(x)
+        x = self.bn2(x)
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
         x = self.linear(x)
