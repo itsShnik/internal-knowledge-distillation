@@ -13,14 +13,13 @@ import torch
 #----------------------------------------
 #--------- Config and training imports --
 #----------------------------------------
-from function.config import config, update_config
-from function.train import train_net
+from functions.config import config, update_config
+from functions.train import train_net
 
 
 def parse_args():
     parser = argparse.ArgumentParser('Train Cognition Network')
     parser.add_argument('--cfg', type=str, help='path to config file')
-    parser.add_argument('--model-dir', type=str, help='root path to store checkpoint')
     parser.add_argument('--dist', help='whether to use distributed training', default=False, action='store_true')
     parser.add_argument('--cudnn-off', help='disable cudnn', default=False, action='store_true')
 
