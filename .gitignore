@@ -8,3 +8,7 @@ data/*
 
 # pycache files
 *pycache*
+
+# cache and ckpts
+cache/*
+ckpts/*
