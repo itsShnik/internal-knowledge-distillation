@@ -12,6 +12,13 @@ class TrainMetrics():
         self.batch_loss = torch.tensor(0.)
         self.allreduce = allreduce
 
+    def reset(self):
+        # To reseet the metrics after every epoch
+        self.correct_instances = torch.tensor(0.)
+        self.total_instances = torch.tensor(0.)
+        self.training_accuracy = torch.tensor(0.)
+        self.batch_loss = torch.tensor(0.)
+
     def update(self, outputs, labels, loss):
         # calculate the number of correct instances
         predicted = torch.argmax(outputs.data, 1)
@@ -27,14 +34,14 @@ class TrainMetrics():
             distributed.all_reduce(total_instances, op=distributed.ReduceOp.SUM)
             distributed.all_reduce(correct_instances, op=distributed.ReduceOp.SUM)
 
-            self.training_accuracy = (correct_instances / total_instances).detach().cpu()
+            self.training_accuracy = 100.0 * (correct_instances / total_instances).detach().cpu()
 
         else:
-            self.training_accuracy = (self.correct_instances / self.total_instances).detach().cpu()
+            self.training_accuracy = 100.0 * (self.correct_instances / self.total_instances).detach().cpu()
 
         self.batch_loss = loss
 
-    def get():
+    def get(self):
         return {'training_loss':self.batch_loss, 'training_accuracy':self.training_accuracy}
 
 
