@@ -4,6 +4,7 @@
 import os
 import time
 from collections import namedtuple
+import wandb
 
 #----------------------------------------
 #--------- Torch related imports --------
@@ -126,6 +127,7 @@ def train(config,
             if nbatch % 50 == 0:
                 # Print accuracy and loss
                 metrics = train_metrics.get()
+                wandb.log({'Batch Accuracy': metrics["batch_accuracy"], 'Train Accuracy': metrics['training_accuracy'], 'Train Loss':metrics['training_loss']})
                 print('[Rank: {}] [Epoch: {}/{}] [Batch: {}/{}] Batch Accuracy: {:.4f} Training Accuracy: {:.4f} Loss: {}'.format(0 if rank is None else rank, epoch, config.TRAIN.END_EPOCH, nbatch, len(train_loader), metrics["batch_accuracy"],  metrics["training_accuracy"], metrics["training_loss"]))
 
             # update end time
@@ -139,6 +141,9 @@ def train(config,
 
         # obtain val metrics
         metrics = val_metrics.get()
+
+        # log val metrics
+        wandb.log({'Val Acc': metrics['current_val_acc']})
 
         # print the validation accuracy
         print('Validation accuracy for epoch {}: {:.4f}'.format(epoch, metrics["current_val_acc"]))
