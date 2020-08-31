@@ -6,7 +6,9 @@ import torch
 import torch.nn
 import torch.optim as optim
 import torch.distributed as distributed
+import torchvision.models as models
 from torch.nn.parallel import DistributedDataParallel as DDP
+from torchsummary import summary
 
 #----------------------------------------
 #--------- Model related imports --------
@@ -71,6 +73,10 @@ def train_net(args, config):
         model = eval(config.MODULE)(num_class=config.NUM_CLASSES)
         model = model.cuda()
 
+        # summarize the model
+        print("summarizing the model")
+        summary(model, (3, 64, 64))
+
         # dataloaders for training, val and test set
         train_loader = make_dataloader(config, mode='train', distributed=True, num_replicas=world_size, rank=rank)
         val_loader = make_dataloader(config, mode='val', distributed=True, num_replicas=world_size, rank=rank)
@@ -85,8 +91,14 @@ def train_net(args, config):
         torch.cuda.set_device(0)
 
         # initialize the model and put is to GPU
-        model = eval(config.MODULE)(num_class=config.NUM_CLASSES)
+        # model = eval(config.MODULE)(num_class=config.NUM_CLASSES)
+        # debug
+        model = models.resnet34()
         model = model.cuda()
+
+        # summarize the model
+        print("summarizing the model")
+        summary(model, (3, 64, 64))
 
         # dataloaders for training and test set
         train_loader = make_dataloader(config, mode='train', distributed=False)
@@ -97,6 +109,10 @@ def train_net(args, config):
 
     # set up the initial learning rate, proportional to batch_size
     initial_lr = batch_size * config.TRAIN.LR
+
+    print("#####################################")
+    print("Debug Message: Initial Learning rate is {}".format(initial_lr))
+    print("#####################################")
 
     # configure the optimizer
     try:
@@ -119,9 +135,9 @@ def train_net(args, config):
     batch_end_callbacks = None
 
     # epoch end callbacks
-    epoch_end_callbacks = [Checkpoint(config), val_metrics]
+    epoch_end_callbacks = [Checkpoint(config, val_metrics)]
 
     #TODO: Broadcast the parameters and optimizer state from rank 0 before the start of training
 
     # At last call the training function from trainer
-    train(config=config, net=model, optimizer=optimizer, train_loader=train_loader, train_metrics=train_metrics, val_loader=val_loader, val_metrics=val_metrics, lr_scheduler=lr_scheduler, rank=rank, batch_end_callbacks=batch_end_callbacks, epoch_end_callbacks=epoch_end_callbacks)
+    train(config=config, net=model, optimizer=optimizer, train_loader=train_loader, train_metrics=train_metrics, val_loader=val_loader, val_metrics=val_metrics, lr_scheduler=lr_scheduler, rank=rank if args.dist else None, batch_end_callbacks=batch_end_callbacks, epoch_end_callbacks=epoch_end_callbacks)
