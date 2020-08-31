@@ -26,6 +26,7 @@ _C.DATASET.DATASET_NAME  = ''
 _C.DATASET.ROOT_PATH  = ''
 _C.DATASET.TRAIN_SPLIT  = ''
 _C.DATASET.VAL_SPLIT  = ''
+_C.DATASET.TOY = False
 
 #----------------------------------------
 #--------- Training related options -----
@@ -44,9 +45,16 @@ _C.TRAIN.END_EPOCH = 110
 _C.TRAIN.STEP_SIZE = 30
 _C.TRAIN.GAMMA = 0.1
 
+#----------------------------------------
+#--------- Validation related options ---
+#----------------------------------------
+_C.VAL = edict()
+_C.VAL.BATCH_IMAGES = 128
+_C.VAL.SHUFFLE = False
+
 def update_config(config_file):
     with open(config_file) as f:
-        exp_config = edict(yaml.load(f))
+        exp_config = edict(yaml.load(f, Loader=yaml.FullLoader))
         for k, v in exp_config.items():
             if k in config:
                 if isinstance(v, dict):
