@@ -11,6 +11,7 @@ import torch.utils.data as data
 #----------------------------------------
 import os
 import os.path
+import random
 from pathlib import Path
 import numpy as np
 import pickle
@@ -61,38 +62,66 @@ def load_from_annotation_files(root, annotation_files):
 
     return image_paths, labels
 
-def create_transforms(root, name):
+def create_transforms(root, name, splits):
     # Load the means and stds file
     dict_mean_std = pickle.load(open(os.path.join(root, 'decathlon_mean_std.pickle'), 'rb'), encoding='latin1')
     means = dict_mean_std[name + 'mean']
     stds = dict_mean_std[name + 'std']
 
-    if name in ['gtsrb', 'omniglot', 'svhn']:
-        transform = transforms.Compose([
-            transforms.Resize(72),
-            transforms.CenterCrop(72),
-            transforms.ToTensor(),
-            transforms.Normalize(means, stds),
-        ])
+    if splits in [['train'], ['train, val']]:
+        if name in ['gtsrb', 'omniglot', 'svhn']:
+            transform = transforms.Compose([
+                transforms.Resize(72),
+                transforms.CenterCrop(72),
+                transforms.ToTensor(),
+                transforms.Normalize(means, stds),
+            ])
+        elif name in ['daimlerpedcls']:
+            transform = transforms.Compose([
+                transforms.Resize(72),            
+                transforms.ToTensor(),
+                transforms.Normalize(means, stds),
+            ])
+        else:
+            transform = transforms.Compose([
+                transforms.Resize(72),
+                transforms.RandomCrop(64),
+                transforms.ToTensor(),
+                transforms.Normalize(means, stds),
+            ])
+
     else:
-        transform = transforms.Compose([
-            transforms.Resize(72),
-            transforms.RandomCrop(64),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(means, stds),
-        ])
+        if name in ['gtsrb', 'omniglot', 'svhn']:
+            transform = transforms.Compose([
+                transforms.Resize(72),
+                transforms.CenterCrop(72),
+                transforms.ToTensor(),
+                transforms.Normalize(means, stds),
+            ])
+        elif name in ['daimlerpedcls']:
+            transform = transforms.Compose([
+                transforms.Resize(72),            
+                transforms.ToTensor(),
+                transforms.Normalize(means, stds),
+            ])
+        else:
+            transform = transforms.Compose([
+                transforms.Resize(72),
+                transforms.RandomCrop(72),
+                transforms.ToTensor(),
+                transforms.Normalize(means, stds),
+            ])
 
     return transform
 
 # Functional interfaces for all the datasets in Decathlon
-def decathlon_dataset(name='imagenet12', root='data/decathlon', splits='train+val'):
+def decathlon_dataset(name='imagenet12', root='data/decathlon', splits='train', toy=False, toy_train_samples=5000, toy_val_samples=5000):
 
     splits = splits.split('+')
 
     cache_file_name = '_'.join([name] + splits) + '.pkl'
     cache_dir = 'cache'
-    cache_file_path = os.path.join(cache_dir, cache_folder_name)
+    cache_file_path = os.path.join(cache_dir, cache_file_name)
 
     if os.path.exists(cache_file_path):
         print('Loading dataset from cache!!')
@@ -105,7 +134,7 @@ def decathlon_dataset(name='imagenet12', root='data/decathlon', splits='train+va
             if split in ['train', 'val']:
                 annotation_files.append(os.path.join(root, 'annotations', f'{name}_{split}.json'))
             else:
-                annotation_files.append(os.path.join(root, 'annotations', f'{name}_stripped_test.json'))
+                annotation_files.append(os.path.join(root, 'annotations', f'{name}_test_stripped.json'))
 
         # load all images and labels from given annotation files
         image_paths, labels = load_from_annotation_files(root, annotation_files)
@@ -114,8 +143,19 @@ def decathlon_dataset(name='imagenet12', root='data/decathlon', splits='train+va
         Path(cache_dir).mkdir(parents=True, exist_ok=True)
         pickle.dump((image_paths, labels), open(cache_file_path, 'wb'))
 
+    # Check for toy dataset
+    if toy:
+        if splits in [['train'], ['train, val']]:
+            image_paths, labels = zip(*random.sample(list(zip(image_paths, labels)), toy_train_samples))
+            image_paths = list(image_paths)
+            labels = list(labels)
+        else:
+            image_paths, labels = zip(*random.sample(list(zip(image_paths, labels)), toy_val_samples))
+            image_paths = list(image_paths)
+            labels = list(labels)
+
     # create transforms
-    transforms = create_transforms(root, name)
+    transforms = create_transforms(root, name, splits)
 
     # return an ImageFolder object
     return ImageFolder(root, transform=transforms, target_transform=None, index=None, labels=labels, imgs=image_paths)
