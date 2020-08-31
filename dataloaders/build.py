@@ -35,7 +35,7 @@ def make_dataloader(config, dataset=None, mode='train', distributed=False, num_r
 
     # config variables
     num_gpu = len(config.GPUS.split(','))
-    num_workers = cfg.NUM_WORKERS_PER_GPU * num_gpu
+    num_workers = config.NUM_WORKERS_PER_GPU * num_gpu
 
     if mode == 'train':
         aspect_grouping = config.TRAIN.ASPECT_GROUPING
@@ -51,9 +51,9 @@ def make_dataloader(config, dataset=None, mode='train', distributed=False, num_r
     # create a Dataset class object
     if dataset is None:
         if config.DATASET.DATASET_NAME in DECATHLON_DATASETS:
-            dataset = decathlon_dataset(name=config.DATASET.DATASET_NAME, root=config.DATASET.ROOT_PATH, splits=splits)
+            dataset = decathlon_dataset(name=config.DATASET.DATASET_NAME, root=config.DATASET.ROOT_PATH, splits=splits, toy=config.DATASET.TOY)
         else:
-            dataset = build_dataset(dataset_name=config.DATASET.DATASET, root=config.DATASET.ROOT_PATH, splits=splits)
+            dataset = build_dataset(dataset_name=config.DATASET.DATASET, root=config.DATASET.ROOT_PATH, splits=splits, toy=config.DATASET.TOY)
 
     sampler = make_data_sampler(dataset, shuffle, distributed, num_replicas, rank)
     batch_sampler = make_batch_data_sampler(dataset, sampler, batch_size)
