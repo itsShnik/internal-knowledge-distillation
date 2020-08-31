@@ -4,6 +4,7 @@
 import os
 import argparse
 import subprocess
+import wandb
 
 #----------------------------------------
 #--------- Torch related imports --------
@@ -33,6 +34,9 @@ def parse_args():
 
 def main():
     args, config = parse_args()
+
+    # initialize wandb
+    wandb.init(project="adaptive-finetuning-resnet", name=config.VERSION, config=config)
 
     train_net(args, config)
     if args.do_test and (rank is None or rank == 0):
