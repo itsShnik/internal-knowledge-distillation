@@ -63,17 +63,17 @@ class ResNet(nn.Module):
         filt_sizes = [64, 128, 256]
 
         # lists for blocks and downsamples
-        self.blocks, self.downsmple = [], []
+        self.blocks, self.downsample = [], []
 
         # construct residual blocks
         for idx, (filt_size, num_blocks, stride) in enumerate(zip(filt_sizes, layers, strides)):
             blocks, downsample = self._make_layer(block, filt_size, num_blocks, stride=stride)
             self.blocks.append(nn.ModuleList(blocks))
-            self.downsmple.append(downsample)
+            self.downsample.append(downsample)
 
         # self.blocks: Multiple layers, each consisting of multiple residual blocks
         self.blocks = nn.ModuleList(self.blocks)
-        self.downsmple = nn.ModuleList(self.downsmple)
+        self.downsample = nn.ModuleList(self.downsample)
 
         # initialize parallel blocks if the training strategy requires
         if self.training_strategy == 'SpotTune':
@@ -164,7 +164,7 @@ class ResNet(nn.Module):
             for layer, num_blocks in enumerate(self.layer_config):
                 for block in range(num_blocks):
                     # calculate the results in the standard manner
-                    residual = self.ds[layer](x) if block==0 else x
+                    residual = self.downsample[layer](x) if block==0 else x
                     output = self.blocks[layer][block](x)
                     x = F.relu(residual + output)
 
