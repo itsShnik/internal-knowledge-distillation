@@ -15,8 +15,8 @@ class Checkpoint():
         self.val_metrics = val_metrics
         self.save_path = self.set_up_logging_dir()
 
-    def set_up_logging_dir(config):
-        ckpt_dir_path = os.path.join('ckpts', config.VERSION)
+    def set_up_logging_dir(self):
+        ckpt_dir_path = os.path.join('ckpts', self.config.VERSION)
         Path(ckpt_dir_path).mkdir(parents=True, exist_ok=True)
         return ckpt_dir_path
 
@@ -29,5 +29,7 @@ class Checkpoint():
 
         torch.save(curr_save_info, os.path.join(self.save_path, f'epoch_{epoch}.pth'))
 
-        if val_metrics.updated_best_val:
+        if self.val_metrics.updated_best_val:
+            print("Saving new best model...")
             torch.save(curr_save_info, os.path.join(self.save_path, f'best.pth'))
+            print("Done!!")
