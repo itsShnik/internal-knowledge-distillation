@@ -9,6 +9,7 @@ from collections import namedtuple
 #--------- Torch related imports --------
 #----------------------------------------
 import torch
+import torch.nn as nn
 
 #----------------------------------------
 #--------- Local file imports -----------
@@ -49,6 +50,7 @@ def train(config,
         train_metrics,
         val_loader,
         val_metrics,
+        criterion=nn.CrossEntropyLoss(),
         lr_scheduler=None,
         rank=None,
         batch_end_callbacks=None,
@@ -56,10 +58,13 @@ def train(config,
 
     for epoch in range(config.TRAIN.BEGIN_EPOCH, config.TRAIN.END_EPOCH):
 
-        print('PROGRESS: %.2f%%' % (100.0 * epoch / config.END_EPOCH))
+        print('PROGRESS: %.2f%%' % (100.0 * epoch / config.TRAIN.END_EPOCH))
 
         # set the net to train mode
         net.train()
+
+        # reset the train metrics
+        train_metrics.reset()
 
         # initialize end time
         end_time = time.time()
@@ -76,8 +81,6 @@ def train(config,
             images, labels = to_cuda(batch)
             data_transfer_time = time.time() - data_transfer_time
 
-            # clear the gradients
-            optimizer.zero_grad()
 
             # forward time
             forward_time = time.time()
@@ -89,8 +92,11 @@ def train(config,
 
             # update training metrics
             metric_time = time.time()
-            train_metrics.update(outputs, labels, loss.clone().detach())
+            train_metrics.update(outputs, labels, loss.item())
             metric_time = time.time() - metric_time
+
+            # clear the gradients
+            optimizer.zero_grad()
 
             # backward time
             backward_time = time.time()
@@ -100,10 +106,11 @@ def train(config,
             # optimizer time
             optimizer_time = time.time()
             
+            optimizer.step()
+
             if lr_scheduler is not None:
                 lr_scheduler.step()
 
-            optimizer.step()
             optimizer_time = time.time() - optimizer_time
 
             # execute batch_end_callbacks
@@ -115,9 +122,11 @@ def train(config,
                                                  )
                 _multiple_callbacks(batch_end_callbacks, batch_end_params)
 
-            # Print accuracy and loss
-            metrics = train_metrics.get()
-            print(f'[Rank: {0 if rank is None else rank}] Training Accuracy: {metrics["training_accuracy"]} Loss: {metrics["training_loss"]}')
+
+            if nbatch % 50 == 0:
+                # Print accuracy and loss
+                metrics = train_metrics.get()
+                print('[Rank: {}] [Epoch: {}/{}] [Batch: {}/{}] Training Accuracy: {:.4f} Loss: {}'.format(0 if rank is None else rank, epoch, config.TRAIN.END_EPOCH, nbatch, len(train_loader), metrics["training_accuracy"], metrics["training_loss"]))
 
             # update end time
             end_time = time.time()
@@ -127,6 +136,12 @@ def train(config,
 
         # update validation metrics
         val_metrics.update(epoch, val_acc)
+
+        # obtain val metrics
+        metrics = val_metrics.get()
+
+        # print the validation accuracy
+        print('Validation accuracy for epoch {}: {:.4f}'.format(epoch, metrics["current_val_acc"]))
 
         if epoch_end_callbacks is not None:
             _multiple_callbacks(epoch_end_callbacks, epoch, net, optimizer)
