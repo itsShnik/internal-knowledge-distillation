@@ -17,6 +17,9 @@ class ValMetrics():
     def update(self, epoch, val_acc):
         self.current_epoch = epoch
 
+        # convert val_acc to tensor
+        val_acc = torch.tensor(val_acc)
+
         if self.allreduce:
             val_acc = val_acc.clone().cuda()
             gpus = torch.tensor(1.).cuda()
@@ -28,14 +31,18 @@ class ValMetrics():
             val_acc = (val_acc / gpus).cpu()
 
 
-        if val_acc > self.best_val_acc:
-            self.best_val_acc = val_acc
+        # current validation accuracy
+        self.current_val_acc = val_acc.item()
+
+        # compare with best val acc
+        if self.current_val_acc > self.best_val_acc:
+            self.best_val_acc = self.current_val_acc
             self.best_val_epoch = epoch
             self.updated_best_val = True
         else:
             self.updated_best_val = False
 
-    def get():
-        return {'best_val_acc':self.best_val_acc, 'best_val_epoch':self.best_val_epoch, 'updated_best_val':self.updated_best_val}
+    def get(self):
+        return {'current_val_acc':self.current_val_acc, 'best_val_acc':self.best_val_acc, 'best_val_epoch':self.best_val_epoch, 'updated_best_val':self.updated_best_val}
 
 
