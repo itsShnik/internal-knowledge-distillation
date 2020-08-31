@@ -3,10 +3,15 @@
 #----------------------------------------
 import torch
 
-def optim_SGD(model, initial_lr=0.1, momentum=0.9, weight_decay=0.05):
+def optim_SGD(model=None, initial_lr=0.1, momentum=0.9, weight_decay=0.05, **kwargs):
 
     # return an SGD optimizer object
     return torch.optim.SGD(model.parameters(), lr=initial_lr, momentum=momentum, weight_decay=weight_decay)
+
+def optim_AdamW(model=None, initial_lr=0.1, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.05, **kwargs):
+
+    # return AdamW object
+    return torch.optim.AdamW(model.parameters(), lr=initial_lr, betas=betas, eps=eps, weight_decay=weight_decay)
 
 def lr_scheduler_StepLR(optimizer, step_size=30, gamma=0.1):
 
