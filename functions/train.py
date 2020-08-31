@@ -1,6 +1,7 @@
 #----------------------------------------
 #--------- Torch related imports --------
 #----------------------------------------
+import wandb
 import numpy as np
 import torch
 import torch.nn
@@ -104,6 +105,9 @@ def train_net(args, config):
 
         # set the batch size
         batch_size = config.TRAIN.BATCH_IMAGES
+
+    # wandb logging
+    wandb.watch(model, log='all')
 
     # set up the initial learning rate, proportional to batch_size
     initial_lr = batch_size * config.TRAIN.LR
