@@ -12,3 +12,6 @@ data/*
 # cache and ckpts
 cache/*
 ckpts/*
+
+# wandb
+wandb/*
