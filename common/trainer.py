@@ -64,7 +64,7 @@ def train(config,
         net.train()
 
         # reset the train metrics
-        train_metrics.reset()
+        #train_metrics.reset()
 
         # initialize end time
         end_time = time.time()
@@ -126,7 +126,7 @@ def train(config,
             if nbatch % 50 == 0:
                 # Print accuracy and loss
                 metrics = train_metrics.get()
-                print('[Rank: {}] [Epoch: {}/{}] [Batch: {}/{}] Training Accuracy: {:.4f} Loss: {}'.format(0 if rank is None else rank, epoch, config.TRAIN.END_EPOCH, nbatch, len(train_loader), metrics["training_accuracy"], metrics["training_loss"]))
+                print('[Rank: {}] [Epoch: {}/{}] [Batch: {}/{}] Batch Accuracy: {:.4f} Training Accuracy: {:.4f} Loss: {}'.format(0 if rank is None else rank, epoch, config.TRAIN.END_EPOCH, nbatch, len(train_loader), metrics["batch_accuracy"],  metrics["training_accuracy"], metrics["training_loss"]))
 
             # update end time
             end_time = time.time()
