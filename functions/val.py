@@ -21,4 +21,5 @@ def do_validation(net, val_loader):
         correct_instances += (predicted == labels).sum().item()
 
     # return accuracy
-    return (100.0 * correct_instances) / total_instances
+    val_acc = (100.0 * correct_instances) / total_instances
+    return val_acc
