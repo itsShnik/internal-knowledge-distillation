@@ -24,7 +24,7 @@ from dataloaders.build import make_dataloader, build_dataset
 #----------------------------------------
 #--------- Imports from common ----------
 #----------------------------------------
-from common.utils import optim_SGD
+from common.utils import optim_SGD, optim_AdamW
 from common.utils import lr_scheduler_StepLR
 from common.trainer import train
 from common.metrics.train_metrics import TrainMetrics
@@ -91,9 +91,7 @@ def train_net(args, config):
         torch.cuda.set_device(0)
 
         # initialize the model and put is to GPU
-        # model = eval(config.MODULE)(num_class=config.NUM_CLASSES)
-        # debug
-        model = models.resnet34()
+        model = eval(config.MODULE)(num_class=config.NUM_CLASSES)
         model = model.cuda()
 
         # summarize the model
@@ -116,7 +114,7 @@ def train_net(args, config):
 
     # configure the optimizer
     try:
-        optimizer = eval(f'optim_{config.TRAIN.OPTIMIZER}')(model, initial_lr, config.TRAIN.MOMENTUM, config.TRAIN.WEIGHT_DECAY)
+        optimizer = eval(f'optim_{config.TRAIN.OPTIMIZER}')(model=model, initial_lr=initial_lr, momentum=config.TRAIN.MOMENTUM, weight_decay=config.TRAIN.WEIGHT_DECAY)
     except:
         raise ValueError(f'{config.TRAIN.OPTIMIZER}, not supported!!')
 
