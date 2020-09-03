@@ -31,6 +31,7 @@ from common.trainer import train
 from common.metrics.train_metrics import TrainMetrics
 from common.metrics.val_metrics import ValMetrics
 from common.callbacks.epoch_end_callbacks.checkpoint import Checkpoint
+from common.callbacks.epoch_end_callbacks.lrscheduler import LRScheduler
 
 def train_net(args, config):
 
@@ -112,21 +113,12 @@ def train_net(args, config):
     # set up the initial learning rate, proportional to batch_size
     initial_lr = batch_size * config.TRAIN.LR
 
-    print("#####################################")
-    print("Debug Message: Initial Learning rate is {}".format(initial_lr))
-    print("#####################################")
-
     # configure the optimizer
     try:
         optimizer = eval(f'optim_{config.TRAIN.OPTIMIZER}')(model=model, initial_lr=initial_lr, momentum=config.TRAIN.MOMENTUM, weight_decay=config.TRAIN.WEIGHT_DECAY)
     except:
         raise ValueError(f'{config.TRAIN.OPTIMIZER}, not supported!!')
 
-    # config the learning rates and schedulars
-    try:
-        lr_scheduler = eval(f'lr_scheduler_{config.TRAIN.LR_SCHEDULER}')(optimizer, step_size=config.TRAIN.STEP_SIZE, gamma=config.TRAIN.GAMMA)
-    except:
-        raise ValueError(f'{config.TRAIN.LR_SCHEDULER}, not supported!!')
 
     # Set up the metrics
     train_metrics = TrainMetrics(config, allreduce=args.dist)
@@ -137,9 +129,9 @@ def train_net(args, config):
     batch_end_callbacks = None
 
     # epoch end callbacks
-    epoch_end_callbacks = [Checkpoint(config, val_metrics)]
+    epoch_end_callbacks = [Checkpoint(config, val_metrics), LRScheduler(config)]
 
     #TODO: Broadcast the parameters and optimizer state from rank 0 before the start of training
 
     # At last call the training function from trainer
-    train(config=config, net=model, optimizer=optimizer, train_loader=train_loader, train_metrics=train_metrics, val_loader=val_loader, val_metrics=val_metrics, lr_scheduler=lr_scheduler, rank=rank if args.dist else None, batch_end_callbacks=batch_end_callbacks, epoch_end_callbacks=epoch_end_callbacks)
+    train(config=config, net=model, optimizer=optimizer, train_loader=train_loader, train_metrics=train_metrics, val_loader=val_loader, val_metrics=val_metrics, rank=rank if args.dist else None, batch_end_callbacks=batch_end_callbacks, epoch_end_callbacks=epoch_end_callbacks)

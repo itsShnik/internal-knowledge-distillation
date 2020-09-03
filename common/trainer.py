@@ -52,7 +52,6 @@ def train(config,
         val_loader,
         val_metrics,
         criterion=nn.CrossEntropyLoss(),
-        lr_scheduler=None,
         rank=None,
         batch_end_callbacks=None,
         epoch_end_callbacks=None):
@@ -65,7 +64,7 @@ def train(config,
         net.train()
 
         # reset the train metrics
-        #train_metrics.reset()
+        train_metrics.reset()
 
         # initialize end time
         end_time = time.time()
@@ -106,13 +105,12 @@ def train(config,
 
             # optimizer time
             optimizer_time = time.time()
-            
             optimizer.step()
-
-            if lr_scheduler is not None:
-                lr_scheduler.step()
-
             optimizer_time = time.time() - optimizer_time
+
+            # Log the optimizer stats -- LR
+            for i, param_group in enumerate(optimizer.param_groups):
+                wandb.log({f'LR_{i}': param_group['lr']})
 
             # execute batch_end_callbacks
             if batch_end_callbacks is not None:
@@ -149,5 +147,5 @@ def train(config,
         print('Validation accuracy for epoch {}: {:.4f}'.format(epoch, metrics["current_val_acc"]))
 
         if epoch_end_callbacks is not None:
-            _multiple_callbacks(epoch_end_callbacks, epoch, net, optimizer)
+            _multiple_callbacks(epoch_end_callbacks, epoch=epoch, net=net, optimizer=optimizer)
 
