@@ -52,7 +52,6 @@ def train(config,
         val_loader,
         val_metrics,
         criterion=nn.CrossEntropyLoss(),
-        lr_scheduler=None,
         rank=None,
         batch_end_callbacks=None,
         epoch_end_callbacks=None):
@@ -65,7 +64,7 @@ def train(config,
         net.train()
 
         # reset the train metrics
-        #train_metrics.reset()
+        train_metrics.reset()
 
         # initialize end time
         end_time = time.time()
@@ -106,12 +105,7 @@ def train(config,
 
             # optimizer time
             optimizer_time = time.time()
-            
             optimizer.step()
-
-            if lr_scheduler is not None:
-                lr_scheduler.step()
-
             optimizer_time = time.time() - optimizer_time
 
             # execute batch_end_callbacks
