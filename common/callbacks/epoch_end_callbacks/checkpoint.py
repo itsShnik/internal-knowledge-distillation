@@ -20,7 +20,7 @@ class Checkpoint():
         Path(ckpt_dir_path).mkdir(parents=True, exist_ok=True)
         return ckpt_dir_path
 
-    def __call__(self, epoch, net, optimizer):
+    def __call__(self, epoch=0, net=None, optimizer=None, **kwargs):
         # save the current epoch metrics
         curr_save_info = {
                 'net_state_dict':net.state_dict(),
