@@ -37,13 +37,12 @@ _C.TRAIN.LR = 5e-4
 _C.TRAIN.MOMENTUM = 0.9
 _C.TRAIN.WEIGHT_DECAY = 1e-4
 _C.TRAIN.OPTIMIZER = 'SGD'
-_C.TRAIN.LR_SCHEDULER = 'StepLR'
+_C.TRAIN.LR_STEPS = [30, 60, 90]
+_C.TRAIN.LR_DECAY = 0.1
 _C.TRAIN.ASPECT_GROUPING = False
 _C.TRAIN.SHUFFLE = False
 _C.TRAIN.BEGIN_EPOCH = 0
 _C.TRAIN.END_EPOCH = 110
-_C.TRAIN.STEP_SIZE = 30
-_C.TRAIN.GAMMA = 0.1
 
 #----------------------------------------
 #--------- Validation related options ---
