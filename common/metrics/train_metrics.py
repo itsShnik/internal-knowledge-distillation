@@ -29,24 +29,24 @@ class TrainMetrics():
 
         # share this data across GPUs
         if self.allreduce:
-            total_instances = self.total_instances.clone().cuda()
-            correct_instances = self.correct_instances.clone().cuda()
+            total_instances = torch.tensor(self.total_instances).clone().cuda()
+            correct_instances = torch.tensor(self.correct_instances).clone().cuda()
 
             # sum across GPUs
             distributed.all_reduce(total_instances, op=distributed.ReduceOp.SUM)
             distributed.all_reduce(correct_instances, op=distributed.ReduceOp.SUM)
 
-            self.training_accuracy = 100.0 * (correct_instances / total_instances).detach().cpu()
+            self.average_training_accuracy = 100.0 * (correct_instances.cpu().item() / total_instances.cpu().item())
 
         else:
-            self.training_accuracy = 100.0 * (self.correct_instances / self.total_instances)
+            self.average_training_accuracy = 100.0 * (self.correct_instances / self.total_instances)
 
 
         self.batch_accuracy = 100.0 * (new_correct_instances / new_instances)
         self.batch_loss = loss
 
     def get(self):
-        return {'training_loss':self.batch_loss, 'batch_accuracy':self.batch_accuracy, 'training_accuracy':self.training_accuracy}
+        return {'training_loss':self.batch_loss, 'batch_accuracy':self.batch_accuracy, 'training_accuracy':self.average_training_accuracy}
 
 
 
