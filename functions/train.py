@@ -31,6 +31,7 @@ from common.trainer import train
 from common.metrics.train_metrics import TrainMetrics
 from common.metrics.val_metrics import ValMetrics
 from common.callbacks.epoch_end_callbacks.checkpoint import Checkpoint
+from common.callbacks.epoch_end_callbacks.lrscheduler import LRScheduler
 
 def train_net(args, config):
 
@@ -128,7 +129,7 @@ def train_net(args, config):
     batch_end_callbacks = None
 
     # epoch end callbacks
-    epoch_end_callbacks = [Checkpoint(config, val_metrics)]
+    epoch_end_callbacks = [Checkpoint(config, val_metrics), LRScheduler(config)]
 
     #TODO: Broadcast the parameters and optimizer state from rank 0 before the start of training
 
