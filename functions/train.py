@@ -1,7 +1,12 @@
 #----------------------------------------
+#--------- OS related imports -----------
+#----------------------------------------
+import os
+import wandb
+
+#----------------------------------------
 #--------- Torch related imports --------
 #----------------------------------------
-import wandb
 import numpy as np
 import torch
 import torch.nn
@@ -76,8 +81,9 @@ def train_net(args, config):
         model = model.cuda()
 
         # summarize the model
-        print("summarizing the model")
-        summary(model, (3, 64, 64))
+        if rank == 0:
+            print("summarizing the model")
+            summary(model, (3, 64, 64))
 
         # dataloaders for training, val and test set
         train_loader = make_dataloader(config, mode='train', distributed=True, num_replicas=world_size, rank=rank)
