@@ -108,6 +108,10 @@ def train(config,
             optimizer.step()
             optimizer_time = time.time() - optimizer_time
 
+            # Log the optimizer stats -- LR
+            for i, param_group in enumerate(optimizer.param_groups):
+                wandb.log({f'LR_{i}': param_group['lr']})
+
             # execute batch_end_callbacks
             if batch_end_callbacks is not None:
                 batch_end_params = BatchEndParam(epoch=epoch, nbatch=nbatch, add_step=True, rank=rank,
@@ -143,5 +147,5 @@ def train(config,
         print('Validation accuracy for epoch {}: {:.4f}'.format(epoch, metrics["current_val_acc"]))
 
         if epoch_end_callbacks is not None:
-            _multiple_callbacks(epoch_end_callbacks, epoch, net, optimizer)
+            _multiple_callbacks(epoch_end_callbacks, epoch=epoch, net=net, optimizer=optimizer)
 
