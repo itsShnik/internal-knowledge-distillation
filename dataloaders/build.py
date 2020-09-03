@@ -10,7 +10,7 @@ from datasets.cubs import CUBS
 from datasets.decathlon import decathlon_dataset
 
 DATASETS = {'cubs':CUBS}
-DECATHLON_DATASETS = {'imagenet12', 'cifar100', 'aircraft', 'gtsrb', 'omniglot', 'dtd', 'vgg-flowers'}
+DECATHLON_DATASETS = {'imagenet12', 'cifar100', 'aircraft', 'gtsrb', 'omniglot', 'dtd', 'vgg-flowers', 'daimlerpedcls', 'svhn', 'ucf101'}
 
 def build_dataset(dataset_name, *args, **kwargs):
     assert dataset_name in DATASET_CATALOGS, "dataset not in catalogs"
