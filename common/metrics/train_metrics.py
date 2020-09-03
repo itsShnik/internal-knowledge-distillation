@@ -20,27 +20,29 @@ class TrainMetrics():
     def update(self, outputs, labels, loss):
         # calculate the number of correct instances
         predicted = torch.argmax(outputs.data, 1)
-        correct_instances = (predicted == labels).sum().cpu().item()
+        new_correct_instances = (predicted == labels).sum().cpu().item()
         new_instances = labels.size(0)
 
         # update total instances
         self.total_instances += new_instances
-        self.correct_instances += correct_instances
+        self.correct_instances += new_correct_instances
 
         # share this data across GPUs
-        #if self.allreduce:
-        #    total_instances = self.total_instances.clone().cuda()
-        #    correct_instances = self.correct_instances.clone().cuda()
+        if self.allreduce:
+            total_instances = self.total_instances.clone().cuda()
+            correct_instances = self.correct_instances.clone().cuda()
 
-        #    # sum across GPUs
-        #    distributed.all_reduce(total_instances, op=distributed.ReduceOp.SUM)
-        #    distributed.all_reduce(correct_instances, op=distributed.ReduceOp.SUM)
+            # sum across GPUs
+            distributed.all_reduce(total_instances, op=distributed.ReduceOp.SUM)
+            distributed.all_reduce(correct_instances, op=distributed.ReduceOp.SUM)
 
-        #    self.training_accuracy = 100.0 * (correct_instances / total_instances).detach().cpu()
+            self.training_accuracy = 100.0 * (correct_instances / total_instances).detach().cpu()
 
-        #else:
-        self.batch_accuracy = 100.0 * (correct_instances / new_instances)
-        self.training_accuracy = 100.0 * (self.correct_instances / self.total_instances)
+        else:
+            self.training_accuracy = 100.0 * (self.correct_instances / self.total_instances)
+
+
+        self.batch_accuracy = 100.0 * (new_correct_instances / new_instances)
         self.batch_loss = loss
 
     def get(self):
