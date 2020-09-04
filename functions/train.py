@@ -80,6 +80,9 @@ def train_net(args, config):
         model = eval(config.MODULE)(num_class=config.NUM_CLASSES)
         model = model.cuda()
 
+        # wrap the model using torch distributed data parallel
+        model = DDP(model, device_ids=[local_rank], output_device=local_rank)
+
         # summarize the model
         if rank == 0:
             print("summarizing the model")
