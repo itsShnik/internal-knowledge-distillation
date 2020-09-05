@@ -13,19 +13,24 @@ DATASET:
     VAL_SPLIT: 'val'
     TOY: False
 
+NETWORK:
+    PRETRAINED_MODEL: 'ckpts/resnet-imagenet/best.pth'
+
 TRAIN:
     BATCH_IMAGES: 128
-    LR: 0.000008
+    LR: 0.0008
     MOMENTUM: 0.9
     WEIGHT_DECAY: 0.0
     OPTIMIZER: 'SGD'
-    LR_SCHEDULER: 'StepLR'
+    LR_STEPS:
+        - 30
+        - 60
+        - 90
+    LR_DECAY: 0.1
     ASPECT_GROUPING: False
     SHUFFLE: True
     BEGIN_EPOCH: 0
     END_EPOCH: 110
-    STEP_SIZE: 30
-    GAMMA: 0.1
 
 VAL:
     BATCH_IMAGES: 128
