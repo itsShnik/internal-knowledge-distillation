@@ -37,6 +37,7 @@ from common.metrics.train_metrics import TrainMetrics
 from common.metrics.val_metrics import ValMetrics
 from common.callbacks.epoch_end_callbacks.checkpoint import Checkpoint
 from common.callbacks.epoch_end_callbacks.lrscheduler import LRScheduler, LRSchedulerPolicy
+from common.callbacks.epoch_end_callbacks.visualization_plotter import VisualizationPlotter
 
 def train_net(args, config):
 
@@ -174,6 +175,7 @@ def train_net(args, config):
     epoch_end_callbacks = [Checkpoint(config, val_metrics), LRScheduler(config)]
     if config.TRAINING_STRATEGY in PolicyVec:
         epoch_end_callbacks.append(LRSchedulerPolicy(config))
+        epoch_end_callbacks.append(VisualizationPlotter())
 
     # Broadcast the parameters and optimizer state from rank 0 before the start of training
     if args.dist:
