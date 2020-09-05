@@ -29,6 +29,12 @@ _C.DATASET.VAL_SPLIT  = ''
 _C.DATASET.TOY = False
 
 #----------------------------------------
+#--------- Network Related Options ------
+#----------------------------------------
+_C.NETWORK = edict()
+_C.NETWORK.PRETRAINED_MODEL = ''
+
+#----------------------------------------
 #--------- Training related options -----
 #----------------------------------------
 _C.TRAIN = edict()
