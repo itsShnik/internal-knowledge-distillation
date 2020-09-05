@@ -30,14 +30,13 @@ from dataloaders.build import make_dataloader, build_dataset
 #----------------------------------------
 #--------- Imports from common ----------
 #----------------------------------------
-from common.utils import optim_SGD, optim_AdamW
-from common.utils import lr_scheduler_StepLR
-from common.trainer import train
-from common.load import smart_model_load
+from common.optim import optim_SGD, optim_AdamW
+from common.utils import smart_model_load
+from common.trainer import PolicyVec, train
 from common.metrics.train_metrics import TrainMetrics
 from common.metrics.val_metrics import ValMetrics
 from common.callbacks.epoch_end_callbacks.checkpoint import Checkpoint
-from common.callbacks.epoch_end_callbacks.lrscheduler import LRScheduler
+from common.callbacks.epoch_end_callbacks.lrscheduler import LRScheduler, LRSchedulerPolicy
 
 def train_net(args, config):
 
@@ -78,16 +77,28 @@ def train_net(args, config):
         config.GPUS = str(local_rank)
 
         # initialize the model and put it to GPU
-        model = eval(config.MODULE)(num_class=config.NUM_CLASSES)
+        model = eval(config.MODULE)(num_class=config.NUM_CLASSES, training_strategy=config.TRAINING_STRATEGY)
         model = model.cuda()
 
         # wrap the model using torch distributed data parallel
         model = DDP(model, device_ids=[local_rank], output_device=local_rank)
 
+        # Check if the model requires policy network
+        if config.TRAINING_STRATEGY in PolicyVec:
+            policy_model = eval(config.POLICY_MODULE)(num_class=2*PolicyVec[config.TRAINING_STRATEGY])
+            policy_model = policy_model.cuda()
+
+            # wrap in DDP
+            policy_model = DDP(policy_model, device_ids=[local_rank], output_device=local_rank)
+
         # summarize the model
         if rank == 0:
-            print("summarizing the model")
+            print("summarizing the main network")
             summary(model, (3, 64, 64))
+
+            if config.TRAINING_STRATEGY in PolicyVec:
+                print("summarizing the policy network")
+                summary(policy_model, (3, 64, 64))
 
         # dataloaders for training, val and test set
         train_loader = make_dataloader(config, mode='train', distributed=True, num_replicas=world_size, rank=rank)
@@ -103,12 +114,21 @@ def train_net(args, config):
         torch.cuda.set_device(0)
 
         # initialize the model and put is to GPU
-        model = eval(config.MODULE)(num_class=config.NUM_CLASSES)
+        model = eval(config.MODULE)(num_class=config.NUM_CLASSES, training_strategy=config.TRAINING_STRATEGY)
         model = model.cuda()
+
+        # check for policy model
+        if config.TRAINING_STRATEGY in PolicyVec:
+            policy_model= eval(config.POLICY_MODULE)(num_class=2*PolicyVec[config.TRAINING_STRATEGY])
+            policy_model = policy_model.cuda()
 
         # summarize the model
         print("summarizing the model")
-        summary(model, (3, 64, 64))
+        # summary(model, (3, 64, 64))
+
+        if config.TRAINING_STRATEGY in PolicyVec:
+            print("Summarizing the policy model")
+            summary(policy_model, (3, 64, 64))
 
         # dataloaders for training and test set
         train_loader = make_dataloader(config, mode='train', distributed=False)
@@ -129,8 +149,16 @@ def train_net(args, config):
     except:
         raise ValueError(f'{config.TRAIN.OPTIMIZER}, not supported!!')
 
+    if config.TRAINING_STRATEGY in PolicyVec:
+        initial_lr_policy = batch_size * config.POLICY.LR
+        try:
+            policy_optimizer = eval(f'optim_{config.POLICY.OPTIMIZER}')(model=model, initial_lr=initial_lr_policy, momentum=config.POLICY.MOMENTUM, weight_decay=config.POLICY.WEIGHT_DECAY)
+        except:
+            raise ValueError(f'{config.POLICY.OPTIMIZER}, not supported!!')
+
     # Load pre-trained model
     if config.NETWORK.PRETRAINED_MODEL != '':
+        print(f"Loading the pretrained model from {config.NETWORK.PRETRAINED_MODEL} ...")
         pretrain_state_dict = torch.load(config.NETWORK.PRETRAINED_MODEL, map_location = lambda storage, loc: storage)['net_state_dict']
         smart_model_load(model, pretrain_state_dict)
 
@@ -144,6 +172,8 @@ def train_net(args, config):
 
     # epoch end callbacks
     epoch_end_callbacks = [Checkpoint(config, val_metrics), LRScheduler(config)]
+    if config.TRAINING_STRATEGY in PolicyVec:
+        epoch_end_callbacks.append(LRSchedulerPolicy(config))
 
     # Broadcast the parameters and optimizer state from rank 0 before the start of training
     if args.dist:
@@ -153,4 +183,4 @@ def train_net(args, config):
             distributed.broadcast(v, src=0)
 
     # At last call the training function from trainer
-    train(config=config, net=model, optimizer=optimizer, train_loader=train_loader, train_metrics=train_metrics, val_loader=val_loader, val_metrics=val_metrics, rank=rank if args.dist else None, batch_end_callbacks=batch_end_callbacks, epoch_end_callbacks=epoch_end_callbacks)
+    train(config=config, net=model, optimizer=optimizer, train_loader=train_loader, train_metrics=train_metrics, val_loader=val_loader, val_metrics=val_metrics, policy_net=policy_model if config.TRAINING_STRATEGY in PolicyVec else None, policy_optimizer=policy_optimizer if config.TRAINING_STRATEGY in PolicyVec else None, rank=rank if args.dist else None, batch_end_callbacks=batch_end_callbacks, epoch_end_callbacks=epoch_end_callbacks)
