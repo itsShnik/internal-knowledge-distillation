@@ -15,3 +15,6 @@ ckpts/*
 
 # wandb
 wandb/*
+
+# local vis
+visualizations/*
