@@ -66,10 +66,22 @@ def train(config,
 
     for epoch in range(config.TRAIN.BEGIN_EPOCH, config.TRAIN.END_EPOCH):
 
+        # We need to visualize policy vectors
+        if config.TRAINING_STRATEGY in PolicyVec:
+            policy_decisions = torch.zeros(PolicyVec[config.TRAINING_STRATEGY]).cuda(non_blocking=True)
+            policy_max = 0
+        else:
+            policy_decisions = None
+            policy_max = None
+
         print('PROGRESS: %.2f%%' % (100.0 * epoch / config.TRAIN.END_EPOCH))
 
         # set the net to train mode
         net.train()
+
+        # policy net to train
+        if config.TRAINING_STRATEGY in PolicyVec:
+            policy_net.train()
 
         # reset the train metrics
         train_metrics.reset()
@@ -98,6 +110,8 @@ def train(config,
                 policy_vector = policy_net(images)
                 policy_action = gumbel_softmax(policy_vector.view(policy_vector.size(0), -1, 2))
                 policy = policy_action[:,:,1]
+                policy_decisions = policy_decisions + policy.clone().detach().sum(0)
+                policy_max += policy.size(0)
                 outputs = net(images, policy)
             else:
                 outputs = net(images)
@@ -173,5 +187,5 @@ def train(config,
         print('Validation accuracy for epoch {}: {:.4f}'.format(epoch, metrics["current_val_acc"]))
 
         if epoch_end_callbacks is not None:
-            _multiple_callbacks(epoch_end_callbacks, epoch=epoch, net=net, optimizer=optimizer, policy_net=policy_net, policy_optimizer=policy_optimizer)
+            _multiple_callbacks(epoch_end_callbacks, epoch=epoch, net=net, optimizer=optimizer, policy_net=policy_net, policy_optimizer=policy_optimizer, policy_decisions=policy_decisions, policy_max=policy_max, training_strategy=config.TRAINING_STRATEGY)
 
