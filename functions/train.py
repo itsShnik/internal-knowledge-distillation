@@ -33,6 +33,7 @@ from dataloaders.build import make_dataloader, build_dataset
 from common.utils import optim_SGD, optim_AdamW
 from common.utils import lr_scheduler_StepLR
 from common.trainer import train
+from common.load import smart_model_load
 from common.metrics.train_metrics import TrainMetrics
 from common.metrics.val_metrics import ValMetrics
 from common.callbacks.epoch_end_callbacks.checkpoint import Checkpoint
@@ -128,6 +129,10 @@ def train_net(args, config):
     except:
         raise ValueError(f'{config.TRAIN.OPTIMIZER}, not supported!!')
 
+    # Load pre-trained model
+    if config.NETWORK.PRETRAINED_MODEL != '':
+        pretrain_state_dict = torch.load(config.NETWORK.PRETRAINED_MODEL, map_location = lambda storage, loc: storage)['net_state_dict']
+        smart_model_load(model, pretrain_state_dict)
 
     # Set up the metrics
     train_metrics = TrainMetrics(config, allreduce=args.dist)
@@ -140,7 +145,12 @@ def train_net(args, config):
     # epoch end callbacks
     epoch_end_callbacks = [Checkpoint(config, val_metrics), LRScheduler(config)]
 
-    #TODO: Broadcast the parameters and optimizer state from rank 0 before the start of training
+    # Broadcast the parameters and optimizer state from rank 0 before the start of training
+    if args.dist:
+        for v in model.state_dict().values():
+            distributed.broadcast(v, src=0)
+        for v in optimizer.state_dict().values():
+            distributed.broadcast(v, src=0)
 
     # At last call the training function from trainer
     train(config=config, net=model, optimizer=optimizer, train_loader=train_loader, train_metrics=train_metrics, val_loader=val_loader, val_metrics=val_metrics, rank=rank if args.dist else None, batch_end_callbacks=batch_end_callbacks, epoch_end_callbacks=epoch_end_callbacks)
