@@ -1,9 +1,11 @@
 ---
 RNG_SEED: -1
 MODULE: 'resnet26'
+POLICY_MODULE: 'resnet8'
 GPUS: '1,2,3,4'
 NUM_WORKERS_PER_GPU: 4
-VERSION: 'resnet_aircraft'
+TRAINING_STRATEGY: 'SpotTune'
+VERSION: 'aircraft_standard_finetuning'
 NUM_CLASSES: 100
 
 DATASET:
@@ -13,19 +15,35 @@ DATASET:
     VAL_SPLIT: 'val'
     TOY: False
 
+NETWORK:
+    PRETRAINED_MODEL: 'ckpts/resnet-imagenet/best.pth'
+
+POLICY:
+    LR: 0.00008
+    MOMENTUM: 0.9
+    WEIGHT_DECAY: 0.0001
+    OPTIMIZER: 'SGD'
+    LR_STEPS:
+        - 30
+        - 60
+        - 90
+    LR_DECAY: 0.1
+
 TRAIN:
     BATCH_IMAGES: 128
     LR: 0.0008
     MOMENTUM: 0.9
-    WEIGHT_DECAY: 0.0001
+    WEIGHT_DECAY: 0.0005
     OPTIMIZER: 'SGD'
-    LR_SCHEDULER: 'StepLR'
+    LR_STEPS:
+        - 30
+        - 60
+        - 90
+    LR_DECAY: 0.1
     ASPECT_GROUPING: False
     SHUFFLE: True
     BEGIN_EPOCH: 0
     END_EPOCH: 110
-    STEP_SIZE: 30
-    GAMMA: 0.1
 
 VAL:
     BATCH_IMAGES: 128

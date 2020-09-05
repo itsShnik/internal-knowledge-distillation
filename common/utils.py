@@ -3,21 +3,6 @@
 #----------------------------------------
 import torch
 
-def optim_SGD(model=None, initial_lr=0.1, momentum=0.9, weight_decay=0.05, **kwargs):
-
-    # return an SGD optimizer object
-    return torch.optim.SGD(model.parameters(), lr=initial_lr, momentum=momentum, weight_decay=weight_decay)
-
-def optim_AdamW(model=None, initial_lr=0.1, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.05, **kwargs):
-
-    # return AdamW object
-    return torch.optim.AdamW(model.parameters(), lr=initial_lr, betas=betas, eps=eps, weight_decay=weight_decay)
-
-def lr_scheduler_StepLR(optimizer, step_size=30, gamma=0.1):
-
-    # return an StepLR object
-    return torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
-
 def to_cuda(batch):
     # convert batch: tuple to batch: list
     batch = list(batch)
@@ -27,3 +12,31 @@ def to_cuda(batch):
         batch[i] = batch[i].cuda(non_blocking=True)
 
     return batch
+
+def smart_model_load(model, pretrain_state_dict):
+
+    # parse from multiple gpu to single or vice versa
+    parsed_state_dict = {}
+    for k, v in pretrain_state_dict.items():
+        if k not in model.state_dict():
+            if k.startswith('module.'):
+                k = k[len('module.'):]
+            else:
+                k = 'module.' + k
+        if k in model.state_dict():
+            parsed_state_dict[k] = v
+
+    # now load the same parameters in parallel blocks
+    for k in model.state_dict():
+        if 'parallel_' in str(k):
+            parsed_state_dict[k] = parsed_state_dict[k.replace('parallel_', '')]
+
+    # delete the linear classifier
+    for k in model.state_dict():
+        if k.startswith('module.linear') or k.startswith('linear'):
+            del parsed_state_dict[k]
+
+    # Now load this state dict to our model
+    new_state_dict = model.state_dict()
+    new_state_dict.update(parsed_state_dict)
+    model.load_state_dict(new_state_dict)

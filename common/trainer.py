@@ -17,6 +17,12 @@ import torch.nn as nn
 #----------------------------------------
 from functions.val import do_validation
 from common.utils import to_cuda
+from common.gumbel_softmax import gumbel_softmax
+
+# Define the PolicyVec here
+PolicyVec = {
+        'SpotTune':12
+        }
 
 # Parameter to pass to batch_end_callback
 BatchEndParam = namedtuple('BatchEndParams',
@@ -52,6 +58,8 @@ def train(config,
         val_loader,
         val_metrics,
         criterion=nn.CrossEntropyLoss(),
+        policy_net=None,
+        policy_optimizer=None,
         rank=None,
         batch_end_callbacks=None,
         epoch_end_callbacks=None):
@@ -84,7 +92,16 @@ def train(config,
 
             # forward time
             forward_time = time.time()
-            outputs = net(images)
+
+            # check for policy net
+            if config.TRAINING_STRATEGY in PolicyVec:
+                policy_vector = policy_net(images)
+                policy_action = gumbel_softmax(policy_vector.view(policy_vector.size(0), -1, 2))
+                policy = policy_action[:,:,1]
+                outputs = net(images, policy)
+            else:
+                outputs = net(images)
+
             forward_time = time.time() - forward_time
 
             # calculate losses
@@ -97,6 +114,8 @@ def train(config,
 
             # clear the gradients
             optimizer.zero_grad()
+            if config.TRAINING_STRATEGY in PolicyVec:
+                policy_optimizer.zero_grad()
 
             # backward time
             backward_time = time.time()
@@ -106,11 +125,18 @@ def train(config,
             # optimizer time
             optimizer_time = time.time()
             optimizer.step()
+            if config.TRAINING_STRATEGY in PolicyVec:
+                policy_optimizer.step()
             optimizer_time = time.time() - optimizer_time
 
             # Log the optimizer stats -- LR
             for i, param_group in enumerate(optimizer.param_groups):
                 wandb.log({f'LR_{i}': param_group['lr']})
+
+            # Log the optim stats for Policy Optim
+            if config.TRAINING_STRATEGY in PolicyVec:
+                for i, param_group in enumerate(policy_optimizer.param_groups):
+                    wandb.log({f'Policy_LR_{i}': param_group['lr']})
 
             # execute batch_end_callbacks
             if batch_end_callbacks is not None:
@@ -132,7 +158,7 @@ def train(config,
             end_time = time.time()
 
         # First do validation at the end of each epoch
-        val_acc = do_validation(net, val_loader)
+        val_acc = do_validation(net, val_loader, policy_net=policy_net)
 
         # update validation metrics
         val_metrics.update(epoch, val_acc)
@@ -147,5 +173,5 @@ def train(config,
         print('Validation accuracy for epoch {}: {:.4f}'.format(epoch, metrics["current_val_acc"]))
 
         if epoch_end_callbacks is not None:
-            _multiple_callbacks(epoch_end_callbacks, epoch=epoch, net=net, optimizer=optimizer)
+            _multiple_callbacks(epoch_end_callbacks, epoch=epoch, net=net, optimizer=optimizer, policy_net=policy_net, policy_optimizer=policy_optimizer)
 

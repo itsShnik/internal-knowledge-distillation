@@ -20,12 +20,18 @@ class Checkpoint():
         Path(ckpt_dir_path).mkdir(parents=True, exist_ok=True)
         return ckpt_dir_path
 
-    def __call__(self, epoch=0, net=None, optimizer=None, save_all_ckpts=False, **kwargs):
+    def __call__(self, epoch=0, net=None, optimizer=None, policy_net=None, policy_optimizer=None, save_all_ckpts=False, **kwargs):
         # save the current epoch metrics
         curr_save_info = {
                 'net_state_dict':net.state_dict(),
                 'optim_state_dict':optimizer.state_dict()
                 }
+
+        # check if there are policy net and optims
+        if policy_net is not None:
+            curr_save_info = {'policy_net_state_dict': policy_net.state_dict()}
+        if policy_optimizer is not None:
+            curr_save_info = {'policy_optimizer_state_dict': policy_optimizer.state_dict()}
 
         if save_all_ckpts:
             torch.save(curr_save_info, os.path.join(self.save_path, f'epoch_{epoch}.pth'))
