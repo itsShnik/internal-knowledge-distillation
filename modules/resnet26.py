@@ -1,7 +1,7 @@
 from resnets.modified_resnet import BasicBlock, ResNet
 
 # Just create a function for resnet26
-def resnet26(num_class=10, blocks=BasicBlock, training_strategy='standard'):
+def resnet26(num_class=10, blocks=BasicBlock, training_strategy='standard', **kwargs):
 
     # layer configuration
     """
@@ -13,4 +13,4 @@ def resnet26(num_class=10, blocks=BasicBlock, training_strategy='standard'):
 
     layers = [4,4,4]
 
-    return ResNet(blocks, layers, num_class, training_strategy)
+    return ResNet(blocks, layers, num_class, training_strategy, **kwargs)
