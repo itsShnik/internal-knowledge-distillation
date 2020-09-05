@@ -77,6 +77,11 @@ class ResNet(nn.Module):
 
         # initialize parallel blocks if the training strategy requires
         if self.training_strategy == 'SpotTune':
+
+            # reset some params
+            factor = 1
+            self.in_planes = int(32*factor)
+
             self.parallel_blocks, self.parallel_downsample = [], []
 
             # construct parallel layers if training strategy requires
