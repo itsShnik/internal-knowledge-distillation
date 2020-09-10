@@ -140,6 +140,8 @@ def train_net(args, config):
 
     # wandb logging
     wandb.watch(model, log='all')
+    if config.TRAINING_STRATEGY in PolicyVec:
+        wandb.watch(policy_model, log='all')
 
     # set up the initial learning rate, proportional to batch_size
     initial_lr = batch_size * config.TRAIN.LR
