@@ -1,7 +1,7 @@
 #----------------------------------------
 #--------- Resnet Imports ---------------
 #----------------------------------------
-from resnets.resnet import ResNet
+from resnets.resnet import ResNet, DynamicResNet
 
 def resnet(config):
 
@@ -15,4 +15,4 @@ def dynamic_resnet(config):
     """
     Just return a dynamic_resnet object and pass config
     """
-    pass
+    return DynamicResNet(config)
