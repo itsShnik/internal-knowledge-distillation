@@ -19,7 +19,7 @@ from torchsummary import summary
 #----------------------------------------
 #--------- Model related imports --------
 #----------------------------------------
-from modules.resnet26 import resnet26
+from modules.network import resnet, dynamic_resnet
 from policy_modules.resnet8 import resnet8
 
 #----------------------------------------
@@ -78,7 +78,7 @@ def train_net(args, config):
         config.GPUS = str(local_rank)
 
         # initialize the model and put it to GPU
-        model = eval(config.MODULE)(num_class=config.NUM_CLASSES, training_strategy=config.TRAINING_STRATEGY)
+        model = eval(config.MODULE)(config.NETWORK)
         model = model.cuda()
 
         # wrap the model using torch distributed data parallel
@@ -86,7 +86,7 @@ def train_net(args, config):
 
         # Check if the model requires policy network
         if config.TRAINING_STRATEGY in PolicyVec:
-            policy_model = eval(config.POLICY_MODULE)(num_class=2*PolicyVec[config.TRAINING_STRATEGY])
+            policy_model = eval(config.POLICY_MODULE)(config.POLICY)
             policy_model = policy_model.cuda()
 
             # wrap in DDP
@@ -115,17 +115,18 @@ def train_net(args, config):
         torch.cuda.set_device(0)
 
         # initialize the model and put is to GPU
-        model = eval(config.MODULE)(num_class=config.NUM_CLASSES, training_strategy=config.TRAINING_STRATEGY)
+        model = eval(config.MODULE)(config.NETWORK)
         model = model.cuda()
 
         # check for policy model
         if config.TRAINING_STRATEGY in PolicyVec:
-            policy_model= eval(config.POLICY_MODULE)(num_class=2*PolicyVec[config.TRAINING_STRATEGY])
+            policy_model= eval(config.POLICY_MODULE)(config.POLICY)
             policy_model = policy_model.cuda()
 
         # summarize the model
         print("summarizing the model")
-        # summary(model, (3, 64, 64))
+        print(model)
+        summary(model, (3, 64, 64))
 
         if config.TRAINING_STRATEGY in PolicyVec:
             print("Summarizing the policy model")
