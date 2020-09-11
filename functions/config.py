@@ -36,6 +36,11 @@ _C.DATASET.TOY = False
 _C.NETWORK = edict()
 _C.NETWORK.PRETRAINED_MODEL = ''
 
+_C.NETWORK.MAIN = edict()
+_C.NETWORK.MAIN.LAYERS = [4,4,4]
+_C.NETWORK.MAIN.BLOCK = 'BasicBlock'
+_C.NETWORK.MAIN.CONV_LAYER = 'conv3x3'
+_C.NETWORK.MAIN.NUM_CLASS = 1000
 #----------------------------------------
 #--------- Policy Related Options -------
 #----------------------------------------
