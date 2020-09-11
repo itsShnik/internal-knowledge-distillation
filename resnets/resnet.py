@@ -164,5 +164,72 @@ class ResNet(nn.Module):
 
         return x
 
+class DynamicResNet(ResNet):
+
+    def __init__(self, config):
+
+        # This will initialize all the parts required in the main backbone of dynamic resnet
+        super(DynamicResNet, self).__init__(config.MAIN)
+
+        self.config = config
+
+        """
+        Next, we need to add backbones one by one
+        PARALLEL: Same config as MAIN, and initialized by pre-trained and frozen
+        LIGHT: Has 1x1 convolutions instead of 3x3, less num of params
+        HEAVY: Has 5x5 convolutions instead of 3x3, higher num of params
+        """
+
+        if config.PARALLEL.SWITCH:
+            self.parallel_backbone = self._make_backbone(config.MAIN)
+            for params in parallel_backbone.parameters():
+                params.requires_grad = False
+
+        if config.LIGHT.SWITCH:
+            self.light_backbone = self._make_backbone(config.LIGHT)
+
+        if config.HEAVY.SWITCH:
+            self.heavy_backbone = self._make_backbone(config.HEAVY)
+
+        # Normalize the convs and zero init the batch norm layers
+        # Weight normalizations for Conv2d weights and zero initializations for batchnorm
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+
+    def forward(self, x, policy=None):
+
+        # Overwriting the forward function
+        # Apply the initial conv + batchnorm layers
+        x = self.seed(x)
+
+        # Apply the backbone
+        for i in range(len(self.backbone)):
+            out = self.backbone[i](x)
+
+            # check for parallel branch
+            if self.config.PARALLEL.SWITCH:
+                parallel_out = self.parallel_backbone[i](x)
+                out = out + parallel_out
+
+            # check for the light branch
+            if self.config.LIGHT.SWITCH:
+                light_out = self.light_backbone[i](x)
+                out = out + light_out
+
+            # check for the heavy branch
+            if self.config.HEAVY.SWITCH:
+                heavy_out = self.heavy_backbone[i](x)
+                out = out + heavy_out
+
+            x = out
 
 
+        # Apply the last layers
+        x = self.top(x)
+
+        return x
