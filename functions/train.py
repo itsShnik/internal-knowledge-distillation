@@ -167,7 +167,7 @@ def train_net(args, config):
         smart_model_load(model, pretrain_state_dict)
 
     # Set up the metrics
-    train_metrics = TrainMetrics(config, allreduce=args.dist)
+    train_metrics = TrainMetrics(config, allreduce=False)
     val_metrics = ValMetrics(config, allreduce=args.dist)
 
     # Set up the callbacks
@@ -180,12 +180,12 @@ def train_net(args, config):
         epoch_end_callbacks.append(LRSchedulerPolicy(config))
         epoch_end_callbacks.append(VisualizationPlotter())
 
-    # Broadcast the parameters and optimizer state from rank 0 before the start of training
-    if args.dist:
-        for v in model.state_dict().values():
-            distributed.broadcast(v, src=0)
-        for v in optimizer.state_dict().values():
-            distributed.broadcast(v, src=0)
+    # TODO: Broadcast the parameters and optimizer state from rank 0 before the start of training
+    #if args.dist:
+    #    for v in model.state_dict().values():
+    #        distributed.broadcast(v, src=0)
+    #    for v in optimizer.state_dict().values():
+    #        distributed.broadcast(v, src=0)
 
     # At last call the training function from trainer
     train(config=config, net=model, optimizer=optimizer, train_loader=train_loader, train_metrics=train_metrics, val_loader=val_loader, val_metrics=val_metrics, policy_net=policy_model if config.TRAINING_STRATEGY in PolicyVec else None, policy_optimizer=policy_optimizer if config.TRAINING_STRATEGY in PolicyVec else None, rank=rank if args.dist else None, batch_end_callbacks=batch_end_callbacks, epoch_end_callbacks=epoch_end_callbacks)
