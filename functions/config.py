@@ -41,6 +41,23 @@ _C.NETWORK.MAIN.LAYERS = [4,4,4]
 _C.NETWORK.MAIN.BLOCK = 'BasicBlock'
 _C.NETWORK.MAIN.CONV_LAYER = 'conv3x3'
 _C.NETWORK.MAIN.NUM_CLASS = 1000
+
+_C.NETWORK.PARALLEL = edict()
+_C.NETWORK.PARALLEL.SWITCH = False
+
+_C.NETWORK.LIGHT = edict()
+_C.NETWORK.LIGHT.SWITCH = False
+_C.NETWORK.LIGHT.LAYERS = [4,4,4]
+_C.NETWORK.LIGHT.BLOCK = 'BasicBlock'
+_C.NETWORK.LIGHT.CONV_LAYER = 'conv1x1'
+
+
+_C.NETWORK.HEAVY = edict()
+_C.NETWORK.HEAVY.SWITCH = False
+_C.NETWORK.HEAVY.LAYERS = [4,4,4]
+_C.NETWORK.HEAVY.BLOCK = 'BasicBlock'
+_C.NETWORK.HEAVY.CONV_LAYER = 'conv5x5'
+
 #----------------------------------------
 #--------- Policy Related Options -------
 #----------------------------------------
