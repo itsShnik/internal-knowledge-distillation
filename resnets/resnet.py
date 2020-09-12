@@ -182,7 +182,7 @@ class DynamicResNet(ResNet):
 
         if config.PARALLEL.SWITCH:
             self.parallel_backbone = self._make_backbone(config.MAIN)
-            for params in parallel_backbone.parameters():
+            for params in self.parallel_backbone.parameters():
                 params.requires_grad = False
 
         if config.LIGHT.SWITCH:
