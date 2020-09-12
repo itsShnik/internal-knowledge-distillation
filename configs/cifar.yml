@@ -1,11 +1,11 @@
 ---
 RNG_SEED: -1
-MODULE: 'resnet26'
+MODULE: 'dynamic_resnet'
 POLICY_MODULE: 'resnet8'
 GPUS: '1,2,3,4'
 NUM_WORKERS_PER_GPU: 4
 TRAINING_STRATEGY: 'standard'
-VERSION: 'cifar_standard_finetuning'
+VERSION: 'cifar_resnet_parallel'
 NUM_CLASSES: 100
 
 DATASET:
@@ -13,10 +13,37 @@ DATASET:
     ROOT_PATH: 'data/decathlon-1.0/'
     TRAIN_SPLIT: 'train'
     VAL_SPLIT: 'val'
-    TOY: False
+    TOY: True
 
 NETWORK:
-    PRETRAINED_MODEL: 'ckpts/resnet-imagenet/best.pth'
+    PRETRAINED_MODEL: 'ckpts/resnet-new-imagenet/best.pth'
+
+    MAIN:
+        LAYERS:
+            - 4
+            - 4
+            - 4
+        CONV_LAYER: 'conv3x3'
+        BLOCK: 'BasicBlock'
+        NUM_CLASS: 1000
+    PARALLEL:
+        SWITCH: True
+    LIGHT:
+        LAYERS:
+            - 4
+            - 4
+            - 4
+        SWITCH: False
+        CONV_LAYER: 'conv1x1'
+        BLOCK: 'BasicBlock'
+    HEAVY:
+        LAYERS:
+            - 4
+            - 4
+            - 4
+        SWITCH: False
+        CONV_LAYER: 'conv5x5'
+        BLOCK: 'BasicBlock'
 
 POLICY:
     LR: 0.00008
