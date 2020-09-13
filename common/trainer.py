@@ -181,7 +181,7 @@ def train(config,
         metrics = val_metrics.get()
 
         # log val metrics
-        wandb.log({'Val Acc': metrics['current_val_acc']})
+        wandb.log({'Val Acc': metrics['current_val_acc'], 'Best Val Acc': metrics['best_val_acc'], 'Best Val Epoch': metrics['best_val_epoch']})
 
         # print the validation accuracy
         print('Validation accuracy for epoch {}: {:.4f}'.format(epoch, metrics["current_val_acc"]))
