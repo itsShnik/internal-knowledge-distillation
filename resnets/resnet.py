@@ -135,7 +135,7 @@ class ResNet(nn.Module):
 
         # Add rest of the blocks with stride 1
         for i in range(1, num_blocks):
-            blocks.append(block(self.in_planes, planes))
+            blocks.append(block(self.in_planes, planes, conv_layer=conv_layer))
 
         return blocks
 
@@ -179,6 +179,10 @@ class DynamicResNet(ResNet):
         LIGHT: Has 1x1 convolutions instead of 3x3, less num of params
         HEAVY: Has 5x5 convolutions instead of 3x3, higher num of params
         """
+        # check for feature extractor setting
+        if config.MAIN.FREEZE_BACKBONE:
+            for params in self.backbone.parameters():
+                params.requires_grad = False
 
         if config.PARALLEL.SWITCH:
             self.parallel_backbone = self._make_backbone(config.MAIN)
