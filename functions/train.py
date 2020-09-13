@@ -19,7 +19,7 @@ from torchsummary import summary
 #----------------------------------------
 #--------- Model related imports --------
 #----------------------------------------
-from modules.resnet26 import resnet26
+from modules.network import resnet, dynamic_resnet
 from policy_modules.resnet8 import resnet8
 
 #----------------------------------------
@@ -78,7 +78,7 @@ def train_net(args, config):
         config.GPUS = str(local_rank)
 
         # initialize the model and put it to GPU
-        model = eval(config.MODULE)(num_class=config.NUM_CLASSES, training_strategy=config.TRAINING_STRATEGY)
+        model = eval(config.MODULE)(config.NETWORK)
         model = model.cuda()
 
         # wrap the model using torch distributed data parallel
@@ -86,7 +86,7 @@ def train_net(args, config):
 
         # Check if the model requires policy network
         if config.TRAINING_STRATEGY in PolicyVec:
-            policy_model = eval(config.POLICY_MODULE)(num_class=2*PolicyVec[config.TRAINING_STRATEGY])
+            policy_model = eval(config.POLICY_MODULE)(config.POLICY)
             policy_model = policy_model.cuda()
 
             # wrap in DDP
@@ -115,17 +115,18 @@ def train_net(args, config):
         torch.cuda.set_device(0)
 
         # initialize the model and put is to GPU
-        model = eval(config.MODULE)(num_class=config.NUM_CLASSES, training_strategy=config.TRAINING_STRATEGY)
+        model = eval(config.MODULE)(config.NETWORK)
         model = model.cuda()
 
         # check for policy model
         if config.TRAINING_STRATEGY in PolicyVec:
-            policy_model= eval(config.POLICY_MODULE)(num_class=2*PolicyVec[config.TRAINING_STRATEGY])
+            policy_model= eval(config.POLICY_MODULE)(config.POLICY)
             policy_model = policy_model.cuda()
 
         # summarize the model
         print("summarizing the model")
-        # summary(model, (3, 64, 64))
+        print(model)
+        summary(model, (3, 64, 64))
 
         if config.TRAINING_STRATEGY in PolicyVec:
             print("Summarizing the policy model")
@@ -166,7 +167,7 @@ def train_net(args, config):
         smart_model_load(model, pretrain_state_dict)
 
     # Set up the metrics
-    train_metrics = TrainMetrics(config, allreduce=args.dist)
+    train_metrics = TrainMetrics(config, allreduce=False)
     val_metrics = ValMetrics(config, allreduce=args.dist)
 
     # Set up the callbacks
@@ -179,12 +180,12 @@ def train_net(args, config):
         epoch_end_callbacks.append(LRSchedulerPolicy(config))
         epoch_end_callbacks.append(VisualizationPlotter())
 
-    # Broadcast the parameters and optimizer state from rank 0 before the start of training
-    if args.dist:
-        for v in model.state_dict().values():
-            distributed.broadcast(v, src=0)
-        for v in optimizer.state_dict().values():
-            distributed.broadcast(v, src=0)
+    # TODO: Broadcast the parameters and optimizer state from rank 0 before the start of training
+    #if args.dist:
+    #    for v in model.state_dict().values():
+    #        distributed.broadcast(v, src=0)
+    #    for v in optimizer.state_dict().values():
+    #        distributed.broadcast(v, src=0)
 
     # At last call the training function from trainer
     train(config=config, net=model, optimizer=optimizer, train_loader=train_loader, train_metrics=train_metrics, val_loader=val_loader, val_metrics=val_metrics, policy_net=policy_model if config.TRAINING_STRATEGY in PolicyVec else None, policy_optimizer=policy_optimizer if config.TRAINING_STRATEGY in PolicyVec else None, rank=rank if args.dist else None, batch_end_callbacks=batch_end_callbacks, epoch_end_callbacks=epoch_end_callbacks)
