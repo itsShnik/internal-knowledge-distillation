@@ -100,7 +100,16 @@ def update_config(config_file):
             if k in config:
                 if isinstance(v, dict):
                     for vk, vv in v.items():
-                        if vk in config[k]:
+                        if isinstance(vv, dict):
+                            for vvk, vvv in vv.items():
+                                if isinstance(vvv, dict):
+                                    for vvvk, vvvv in vvv.items():
+                                        config[k][vvk][vvvk] = vvvv
+                                elif vvk in config[k][vk]:
+                                    config[k][vk][vvk] = vvv
+                                else:
+                                    raise ValueError("key {}.{}.{} not in config.py".format(k, vk, vvk))
+                        elif vk in config[k]:
                             config[k][vk] = vv
                         else:
                             raise ValueError("key {}.{} not in config.py".format(k, vk))
