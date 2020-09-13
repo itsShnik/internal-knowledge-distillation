@@ -1,22 +1,49 @@
 ---
 RNG_SEED: -1
-MODULE: 'resnet26'
+MODULE: 'dynamic_resnet'
 POLICY_MODULE: 'resnet8'
 GPUS: '1,2,3,4'
 NUM_WORKERS_PER_GPU: 4
-TRAINING_STRATEGY: 'SpotTune'
-VERSION: 'aircraft_standard_finetuning'
-NUM_CLASSES: 100
+TRAINING_STRATEGY: 'standard'
+VERSION: 'daimlerpedcls_light'
+NUM_CLASSES: 2
 
 DATASET:
-    DATASET_NAME: 'aircraft'
+    DATASET_NAME: 'daimlerpedcls'
     ROOT_PATH: 'data/decathlon-1.0/'
     TRAIN_SPLIT: 'train'
     VAL_SPLIT: 'val'
     TOY: False
 
 NETWORK:
-    PRETRAINED_MODEL: 'ckpts/resnet-imagenet/best.pth'
+    PRETRAINED_MODEL: 'ckpts/resnet_imagenet_dist_ckpt/best.pth'
+    MAIN:
+        LAYERS:
+            - 4
+            - 4
+            - 4
+        CONV_LAYER: 'conv3x3'
+        BLOCK: 'BasicBlock'
+        NUM_CLASS: 2
+        FREEZE_BACKBONE: False
+    PARALLEL:
+        SWITCH: False
+    LIGHT:
+        LAYERS:
+            - 4
+            - 4
+            - 4
+        SWITCH: True
+        CONV_LAYER: 'conv1x1'
+        BLOCK: 'BasicBlock'
+    HEAVY:
+        LAYERS:
+            - 4
+            - 4
+            - 4
+        SWITCH: False
+        CONV_LAYER: 'conv5x5'
+        BLOCK: 'BasicBlock'
 
 POLICY:
     LR: 0.00008
