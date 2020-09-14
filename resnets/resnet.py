@@ -205,13 +205,8 @@ class DynamicResNet(ResNet):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-    def forward(self, x, policy=None):
-
-        # Overwriting the forward function
-        # Apply the initial conv + batchnorm layers
-        x = self.seed(x)
-
-        # Apply the backbone
+    def standard_backbone_forward(x, **kwargs):
+        # apply the backbone
         for i in range(len(self.backbone)):
             out = self.backbone[i](x)
 
@@ -232,7 +227,61 @@ class DynamicResNet(ResNet):
 
             x = out
 
+        return x
 
+    def binary_backbone_forward(x, policy=None, **kwargs):
+        # current index
+        current_index = 0
+
+        for i in range(len(self.backbone)):
+            # calculate main backbone and take a binary decision
+            out = self.backbone[i](x)
+            action = policy[:,current_index].contiguous()
+            action_mask = action.float().view(-1,1,1,1)
+            out = action_mask * out
+            current_index += 1
+            
+
+            # check for parallel branch
+            if self.config.PARALLEL.SWITCH:
+                parallel_out = self.parallel_backbone[i](x)
+                action = policy[:,current_index].contiguous()
+                action_mask = action.float().view(-1,1,1,1)
+                parallel_out = action_mask * parallel_out
+                current_index += 1
+                out = out + parallel_out
+
+            # check for the light branch
+            if self.config.LIGHT.SWITCH:
+                light_out = self.light_backbone[i](x)
+                action = policy[:,current_index].contiguous()
+                action_mask = action.float().view(-1,1,1,1)
+                light_out = action_mask * light_out
+                current_index += 1
+                out = out + light_out
+
+            # check for the heavy branch
+            if self.config.HEAVY.SWITCH:
+                heavy_out = self.heavy_backbone[i](x)
+                action = policy[:,current_index].contiguous()
+                action_mask = action.float().view(-1,1,1,1)
+                heavy_out = action_mask * heavy_out
+                current_index += 1
+                out = out + heavy_out
+
+            x = out
+
+        return x
+
+    def forward(self, x, policy=None):
+
+        # Overwriting the forward function
+        # Apply the initial conv + batchnorm layers
+        x = self.seed(x)
+
+        # Apply the backbone
+        x = eval(f'{config.TRAINING_STRATEGY}_self.backbone_forward')(x, policy=policy)
+        
         # Apply the last layers
         x = self.top(x)
 
