@@ -85,8 +85,8 @@ def train_net(args, config):
         model = DDP(model, device_ids=[local_rank], output_device=local_rank)
 
         # Check if the model requires policy network
-        if config.TRAINING_STRATEGY in PolicyVec:
-            policy_model = eval(config.POLICY_MODULE)(config.POLICY)
+        if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
+            policy_model = eval(config.POLICY_MODULE)(config.POLICY.NETWORK)
             policy_model = policy_model.cuda()
 
             # wrap in DDP
@@ -97,7 +97,7 @@ def train_net(args, config):
             print("summarizing the main network")
             summary(model, (3, 64, 64))
 
-            if config.TRAINING_STRATEGY in PolicyVec:
+            if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
                 print("summarizing the policy network")
                 summary(policy_model, (3, 64, 64))
 
@@ -119,8 +119,8 @@ def train_net(args, config):
         model = model.cuda()
 
         # check for policy model
-        if config.TRAINING_STRATEGY in PolicyVec:
-            policy_model= eval(config.POLICY_MODULE)(config.POLICY)
+        if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
+            policy_model= eval(config.POLICY_MODULE)(config.POLICY.NETWORK)
             policy_model = policy_model.cuda()
 
         # summarize the model
@@ -128,7 +128,7 @@ def train_net(args, config):
         print(model)
         summary(model, (3, 64, 64))
 
-        if config.TRAINING_STRATEGY in PolicyVec:
+        if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
             print("Summarizing the policy model")
             summary(policy_model, (3, 64, 64))
 
@@ -141,7 +141,7 @@ def train_net(args, config):
 
     # wandb logging
     wandb.watch(model, log='all')
-    if config.TRAINING_STRATEGY in PolicyVec:
+    if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
         wandb.watch(policy_model, log='all')
 
     # set up the initial learning rate, proportional to batch_size
@@ -153,7 +153,7 @@ def train_net(args, config):
     except:
         raise ValueError(f'{config.TRAIN.OPTIMIZER}, not supported!!')
 
-    if config.TRAINING_STRATEGY in PolicyVec:
+    if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
         initial_lr_policy = batch_size * config.POLICY.LR
         try:
             policy_optimizer = eval(f'optim_{config.POLICY.OPTIMIZER}')(model=model, initial_lr=initial_lr_policy, momentum=config.POLICY.MOMENTUM, weight_decay=config.POLICY.WEIGHT_DECAY)
@@ -176,7 +176,7 @@ def train_net(args, config):
 
     # epoch end callbacks
     epoch_end_callbacks = [Checkpoint(config, val_metrics), LRScheduler(config)]
-    if config.TRAINING_STRATEGY in PolicyVec:
+    if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
         epoch_end_callbacks.append(LRSchedulerPolicy(config))
         epoch_end_callbacks.append(VisualizationPlotter())
 
@@ -188,4 +188,4 @@ def train_net(args, config):
     #        distributed.broadcast(v, src=0)
 
     # At last call the training function from trainer
-    train(config=config, net=model, optimizer=optimizer, train_loader=train_loader, train_metrics=train_metrics, val_loader=val_loader, val_metrics=val_metrics, policy_net=policy_model if config.TRAINING_STRATEGY in PolicyVec else None, policy_optimizer=policy_optimizer if config.TRAINING_STRATEGY in PolicyVec else None, rank=rank if args.dist else None, batch_end_callbacks=batch_end_callbacks, epoch_end_callbacks=epoch_end_callbacks)
+    train(config=config, net=model, optimizer=optimizer, train_loader=train_loader, train_metrics=train_metrics, val_loader=val_loader, val_metrics=val_metrics, policy_net=policy_model if config.NETWORK.TRAINING_STRATEGY in PolicyVec else None, policy_optimizer=policy_optimizer if config.NETWORK.TRAINING_STRATEGY in PolicyVec else None, rank=rank if args.dist else None, batch_end_callbacks=batch_end_callbacks, epoch_end_callbacks=epoch_end_callbacks)
