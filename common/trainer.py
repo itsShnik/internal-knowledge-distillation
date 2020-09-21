@@ -21,7 +21,8 @@ from common.gumbel_softmax import gumbel_softmax
 
 # Define the PolicyVec here
 PolicyVec = {
-        'SpotTune':12
+        'SpotTune':12,
+        'binary':36
         }
 
 # Parameter to pass to batch_end_callback
@@ -67,8 +68,8 @@ def train(config,
     for epoch in range(config.TRAIN.BEGIN_EPOCH, config.TRAIN.END_EPOCH):
 
         # We need to visualize policy vectors
-        if config.TRAINING_STRATEGY in PolicyVec:
-            policy_decisions = torch.zeros(PolicyVec[config.TRAINING_STRATEGY]).cuda(non_blocking=True)
+        if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
+            policy_decisions = torch.zeros(PolicyVec[config.NETWORK.TRAINING_STRATEGY]).cuda(non_blocking=True)
             policy_max = 0
         else:
             policy_decisions = None
@@ -80,7 +81,7 @@ def train(config,
         net.train()
 
         # policy net to train
-        if config.TRAINING_STRATEGY in PolicyVec:
+        if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
             policy_net.train()
 
         # reset the train metrics
@@ -106,7 +107,7 @@ def train(config,
             forward_time = time.time()
 
             # check for policy net
-            if config.TRAINING_STRATEGY in PolicyVec:
+            if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
                 policy_vector = policy_net(images)
                 policy_action = gumbel_softmax(policy_vector.view(policy_vector.size(0), -1, 2))
                 policy = policy_action[:,:,1]
@@ -128,7 +129,7 @@ def train(config,
 
             # clear the gradients
             optimizer.zero_grad()
-            if config.TRAINING_STRATEGY in PolicyVec:
+            if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
                 policy_optimizer.zero_grad()
 
             # backward time
@@ -139,7 +140,7 @@ def train(config,
             # optimizer time
             optimizer_time = time.time()
             optimizer.step()
-            if config.TRAINING_STRATEGY in PolicyVec:
+            if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
                 policy_optimizer.step()
             optimizer_time = time.time() - optimizer_time
 
@@ -148,7 +149,7 @@ def train(config,
                 wandb.log({f'LR_{i}': param_group['lr']})
 
             # Log the optim stats for Policy Optim
-            if config.TRAINING_STRATEGY in PolicyVec:
+            if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
                 for i, param_group in enumerate(policy_optimizer.param_groups):
                     wandb.log({f'Policy_LR_{i}': param_group['lr']})
 
@@ -187,5 +188,5 @@ def train(config,
         print('Validation accuracy for epoch {}: {:.4f}'.format(epoch, metrics["current_val_acc"]))
 
         if epoch_end_callbacks is not None:
-            _multiple_callbacks(epoch_end_callbacks, rank=rank if rank is not None else 0, epoch=epoch, net=net, optimizer=optimizer, policy_net=policy_net, policy_optimizer=policy_optimizer, policy_decisions=policy_decisions, policy_max=policy_max, training_strategy=config.TRAINING_STRATEGY)
+            _multiple_callbacks(epoch_end_callbacks, rank=rank if rank is not None else 0, epoch=epoch, net=net, optimizer=optimizer, policy_net=policy_net, policy_optimizer=policy_optimizer, policy_decisions=policy_decisions, policy_max=policy_max, training_strategy=config.NETWORK.TRAINING_STRATEGY)
 

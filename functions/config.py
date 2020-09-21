@@ -16,8 +16,6 @@ _C.MODULE = ''
 _C.GPUS = ''
 _C.NUM_WORKERS_PER_GPU = 4
 _C.VERSION = 'adaptive-finetune'
-_C.NUM_CLASSES = 1000
-_C.TRAINING_STRATEGY = 'standard'
 _C.POLICY_MODULE = 'resnet8'
 
 #----------------------------------------
@@ -35,6 +33,7 @@ _C.DATASET.TOY = False
 #----------------------------------------
 _C.NETWORK = edict()
 _C.NETWORK.PRETRAINED_MODEL = ''
+_C.NETWORK.TRAINING_STRATEGY = 'standard'
 
 _C.NETWORK.MAIN = edict()
 _C.NETWORK.MAIN.LAYERS = [4,4,4]
@@ -69,6 +68,11 @@ _C.POLICY.LR_STEPS = [30, 60, 90]
 _C.POLICY.LR_DECAY = 0.1
 _C.POLICY.MOMENTUM = 0.9
 _C.POLICY.WEIGHT_DECAY = 0.001
+
+_C.POLICY.NETWORK = edict()
+_C.POLICY.NETWORK.LAYERS = [1,1,1]
+_C.POLICY.NETWORK.CONV_LAYER = 'conv3x3'
+_C.POLICY.NETWORK.NUM_CLASS = 24
 
 #----------------------------------------
 #--------- Training related options -----
