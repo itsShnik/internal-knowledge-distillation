@@ -1,113 +1,201 @@
-# -------------------------------------------
-# Taken from https://github.com/gyhui14/spottune
-# Modified by Nikhil shah
-# -------------------------------------------
-
+#----------------------------------------
+#--------- Torch Related Imports --------
+#----------------------------------------
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
+#----------------------------------------
+#--------- Python Lib Imports -----------
+#----------------------------------------
 import math
 
+def conv1x1(in_planes, out_planes, stride=1):
+    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
+
+def conv3x3(in_planes, out_planes, stride=1):
+    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
+
+def conv5x5(in_planes, out_planes, stride=1):
+    return nn.Conv2d(in_planes, out_planes, kernel_size=5, stride=stride, padding=2, bias=False)
+
 class DownsampleB(nn.Module):
+    
     def __init__(self, nIn, nOut, stride=2):
         super(DownsampleB, self).__init__()
         self.avg = nn.AvgPool2d(stride)
 
     def forward(self, x):
         residual = self.avg(x)
-        return torch.cat((residual, residual*0),1)
+        return torch.cat((residual, residual*0), 1)
 
-def conv3x3(in_planes, out_planes, stride=1):
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
-
-# No projection: identity shortcut
 class BasicBlock(nn.Module):
     expansion = 1
 
-    def __init__(self, in_planes, planes, stride=1):
+    def __init__(self, in_planes, planes, conv_layer=conv3x3, downsample=None, stride=1):
         super(BasicBlock, self).__init__()
 
-        self.conv1 = conv3x3(in_planes, planes, stride)
+        self.conv1 = conv_layer(in_planes, planes, stride)
         self.bn1 = nn.BatchNorm2d(planes)
 
-        self.conv2 = nn.Sequential(nn.ReLU(True), conv3x3(planes, planes))
+        self.relu = nn.ReLU(True)
+        self.conv2 = conv_layer(planes, planes)
         self.bn2 = nn.BatchNorm2d(planes)
 
+        self.downsample = downsample
+
     def forward(self, x):
+        identity = x
+
         out = self.conv1(x)
         out = self.bn1(out)
-        out = F.relu(out)
-
+        out = self.relu(out)
         out = self.conv2(out)
-        y = self.bn2(out)
+        out = self.bn2(out)
 
-        return y
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
+
+        return out
+
 
 class ResNet(nn.Module):
-    def __init__(self, block, layers, num_class = 10, training_strategy='standard'):
+
+    def __init__(self, config):
         super(ResNet, self).__init__()
 
-        # self.training strategy
-        self.training_strategy = training_strategy
-
-        # initial layers before residual blocks
+        """
+        Factor: The number of after the first resnet block will be 32*factor
+        """
         factor = 1
-        self.in_planes = int(32*factor)
+
+        # The pre-cursor to resnet blocks
         self.conv1 = conv3x3(3, int(32*factor))
         self.bn1 = nn.BatchNorm2d(int(32*factor))
-        self.relu = nn.ReLU(inplace=True)
 
-        # parameters for residual layers
-        strides = [2, 2, 2]
-        filt_sizes = [64, 128, 256]
+        """
+        The resnet backbone would be a nn.ModuleList() consisting of all blocks in all parts
+        """
+        # Create the resnet blocks backbone
+        self.backbone = self._make_backbone(config, factor)
 
-        # lists for blocks and downsamples
-        self.blocks, self.downsample = [], []
+        """
+        Other remaining layers
+        The number of channels in the activation maps will increase to 256*factor,
+        doubling each set of blocks and there will be three sets of blocks.
+        And then adaptive pool to reduce n*n maps to 1*1
+        """
+        self.bn2 = nn.Sequential(nn.BatchNorm2d(int(256*factor)), nn.ReLU(inplace=True))
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        self.linear = nn.Linear(int(256*factor), config.NUM_CLASS)
 
-        # construct residual blocks
-        for idx, (filt_size, num_blocks, stride) in enumerate(zip(filt_sizes, layers, strides)):
-            blocks, downsample = self._make_layer(block, filt_size, num_blocks, stride=stride)
-            self.blocks.append(nn.ModuleList(blocks))
-            self.downsample.append(downsample)
+        
+    def _make_backbone(self, config, factor=1):
 
-        # self.blocks: Multiple layers, each consisting of multiple residual blocks
-        self.blocks = nn.ModuleList(self.blocks)
-        self.downsample = nn.ModuleList(self.downsample)
+        """
+        The backbone will be a ModuleList consisting of multiple blocks in each part
+        The strides and filt_sizes are hardcoded considering resnet like blocks only
+        In future if you need to add backbones consisting of other kind of blocks,
+        like that in GooLeNet, just write another _make_backbone function.
+        """
+        backbone = []
 
-        # initialize parallel blocks if the training strategy requires
-        if self.training_strategy == 'SpotTune':
+        self.in_planes = int(32*factor)
+        strides = [2,2,2]
+        planes = [64, 128, 256]
 
-            # reset some params
-            factor = 1
-            self.in_planes = int(32*factor)
+        # construct residual blocks for each part
+        for idx, (num_planes, num_blocks, stride) in enumerate(zip(planes, config.LAYERS, strides)):
+            blocks = self._make_layer(num_planes, num_blocks, block=eval(config.BLOCK), conv_layer=eval(config.CONV_LAYER), stride=stride)
+            backbone += blocks
 
-            self.parallel_blocks, self.parallel_downsample = [], []
+        # convert the list of blocks into a modulelist
+        backbone = nn.ModuleList(backbone)
 
-            # construct parallel layers if training strategy requires
-            for idx, (filt_size, num_blocks, stride) in enumerate(zip(filt_sizes, layers, strides)):
-                blocks, downsample = self._make_layer(block, filt_size, num_blocks, stride=stride)
-                self.parallel_blocks.append(nn.ModuleList(blocks))
-                self.parallel_downsample.append(downsample)
+        return backbone
 
-            # self.parallel_blocks: Same as self.blocks
-            self.parallel_blocks = nn.ModuleList(self.parallel_blocks)
-            self.parallel_downsample = nn.ModuleList(self.parallel_downsample)
+    def _make_layer(self, planes, num_blocks, block=BasicBlock, conv_layer=conv3x3, stride=1):
 
-            # Freezze the params of parallel blocks
-            for params in self.parallel_blocks.parameters():
+        # The first block has to have downsample layer
+        """
+        The first block is marked by the difference in the number of planes and in_planes
+        """
+        if self.in_planes != planes * block.expansion:
+            downsample = DownsampleB(self.in_planes, planes * block.expansion, 2)
+        else:
+            downsample = None
+
+        # The first block will have downsample and stride = 2
+        blocks = [block(self.in_planes, planes, conv_layer=conv_layer, downsample=downsample, stride=stride)]
+
+        # Now we can increment the number of in_planes
+        self.in_planes = planes * block.expansion
+
+        # Add rest of the blocks with stride 1
+        for i in range(1, num_blocks):
+            blocks.append(block(self.in_planes, planes, conv_layer=conv_layer))
+
+        return blocks
+
+    def seed(self, x):
+        x = self.bn1(self.conv1(x))
+        return x
+
+    def top(self, x):
+        x = self.bn2(x)
+        x = self.avgpool(x)
+        x = x.view(x.size(0), -1)
+        x = self.linear(x)
+        return x
+
+    def forward(self, x):
+
+        # apply the initial conv + batchnorm layers
+        x = self.seed(x)
+
+        # Apply the backbone
+        for block in self.backbone:
+            x = block(x)
+
+        # Apply the last layers
+        x = self.top(x)
+
+        return x
+
+class DynamicResNet(ResNet):
+
+    def __init__(self, config):
+
+        # This will initialize all the parts required in the main backbone of dynamic resnet
+        super(DynamicResNet, self).__init__(config.MAIN)
+
+        self.config = config
+
+        """
+        Next, we need to add backbones one by one
+        PARALLEL: Same config as MAIN, and initialized by pre-trained and frozen
+        LIGHT: Has 1x1 convolutions instead of 3x3, less num of params
+        HEAVY: Has 5x5 convolutions instead of 3x3, higher num of params
+        """
+        # check for feature extractor setting
+        if config.MAIN.FREEZE_BACKBONE:
+            for params in self.backbone.parameters():
                 params.requires_grad = False
-            for params in self.parallel_downsample.parameters():
+
+        if config.PARALLEL.SWITCH:
+            self.parallel_backbone = self._make_backbone(config.MAIN)
+            for params in self.parallel_backbone.parameters():
                 params.requires_grad = False
 
-        # remaining layers to project into required number of classes
-        self.bn2 = nn.Sequential(nn.BatchNorm2d(int(256*factor)), nn.ReLU(True)) 
-        self.avgpool = nn.AdaptiveAvgPool2d(1)        
-        self.linear = nn.Linear(int(256*factor), num_class)
+        if config.LIGHT.SWITCH:
+            self.light_backbone = self._make_backbone(config.LIGHT)
 
-        # save the layers: List into the layer config
-        self.layer_config = layers
+        if config.HEAVY.SWITCH:
+            self.heavy_backbone = self._make_backbone(config.HEAVY)
 
+        # Normalize the convs and zero init the batch norm layers
         # Weight normalizations for Conv2d weights and zero initializations for batchnorm
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -117,64 +205,84 @@ class ResNet(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-    def seed(self, x):
-        x = self.bn1(self.conv1(x))
+    def standard_backbone_forward(x, **kwargs):
+        # apply the backbone
+        for i in range(len(self.backbone)):
+            out = self.backbone[i](x)
+
+            # check for parallel branch
+            if self.config.PARALLEL.SWITCH:
+                parallel_out = self.parallel_backbone[i](x)
+                out = out + parallel_out
+
+            # check for the light branch
+            if self.config.LIGHT.SWITCH:
+                light_out = self.light_backbone[i](x)
+                out = out + light_out
+
+            # check for the heavy branch
+            if self.config.HEAVY.SWITCH:
+                heavy_out = self.heavy_backbone[i](x)
+                out = out + heavy_out
+
+            x = out
+
         return x
 
-    def _make_layer(self, block, planes, num_blocks, stride=1):
+    def binary_backbone_forward(x, policy=None, **kwargs):
+        # current index
+        current_index = 0
 
-        # create a sequential downsample layer
-        downsample = nn.Sequential()
-        if stride != 1 or self.in_planes != planes * block.expansion:
-            downsample = DownsampleB(self.in_planes, planes * block.expansion, 2)
+        for i in range(len(self.backbone)):
+            # calculate main backbone and take a binary decision
+            out = self.backbone[i](x)
+            action = policy[:,current_index].contiguous()
+            action_mask = action.float().view(-1,1,1,1)
+            out = action_mask * out
+            current_index += 1
+            
 
-        # residual blocks for each layer
-        blocks = [block(self.in_planes, planes, stride)]
-        self.in_planes = planes * block.expansion
-        for i in range(1, num_blocks):
-            blocks.append(block(self.in_planes, planes))
+            # check for parallel branch
+            if self.config.PARALLEL.SWITCH:
+                parallel_out = self.parallel_backbone[i](x)
+                action = policy[:,current_index].contiguous()
+                action_mask = action.float().view(-1,1,1,1)
+                parallel_out = action_mask * parallel_out
+                current_index += 1
+                out = out + parallel_out
 
-        return blocks, downsample
+            # check for the light branch
+            if self.config.LIGHT.SWITCH:
+                light_out = self.light_backbone[i](x)
+                action = policy[:,current_index].contiguous()
+                action_mask = action.float().view(-1,1,1,1)
+                light_out = action_mask * light_out
+                current_index += 1
+                out = out + light_out
+
+            # check for the heavy branch
+            if self.config.HEAVY.SWITCH:
+                heavy_out = self.heavy_backbone[i](x)
+                action = policy[:,current_index].contiguous()
+                action_mask = action.float().view(-1,1,1,1)
+                heavy_out = action_mask * heavy_out
+                current_index += 1
+                out = out + heavy_out
+
+            x = out
+
+        return x
 
     def forward(self, x, policy=None):
 
-        # apply the initial conv + batchnorm layers
+        # Overwriting the forward function
+        # Apply the initial conv + batchnorm layers
         x = self.seed(x)
-    
-        # Now apply the residual blocks based on the strategy
-        if self.training_strategy == 'SpotTune':
 
-            # current index specifies the index of policy that we are going to use
-            current_index = 0
+        # Apply the backbone
+        x = eval(f'{config.TRAINING_STRATEGY}_self.backbone_forward')(x, policy=policy)
+        
+        # Apply the last layers
+        x = self.top(x)
 
-            for layer, num_blocks in enumerate(self.layer_config):
-                    for block in range(num_blocks):
-                        # calculate the residual and block ouput
-                        residual = self.downsample[layer](x) if block==0 else x
-                        output = self.blocks[layer][block](x)
-                        output = F.relu(residual + output)
-			
-                        # calculate the parallel side outputs and residuals
-                        parallel_residual = self.parallel_downsample[layer](x) if block==0 else x
-                        parallel_output = self.parallel_blocks[layer][block](x)
-                        parallel_output = F.relu(parallel_residual + parallel_output)
-
-                        # take a decision here
-                        action = policy[:,current_index].contiguous()
-                        action_mask = action.float().view(-1,1,1,1)
-                        x = action_mask * output + (1-action_mask) * parallel_output
-                        current_index += 1   
-
-        else:
-            for layer, num_blocks in enumerate(self.layer_config):
-                for block in range(num_blocks):
-                    # calculate the results in the standard manner
-                    residual = self.downsample[layer](x) if block==0 else x
-                    output = self.blocks[layer][block](x)
-                    x = F.relu(residual + output)
-
-        x = self.bn2(x)
-        x = self.avgpool(x)
-        x = x.view(x.size(0), -1)
-        x = self.linear(x)
         return x
