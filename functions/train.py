@@ -19,8 +19,8 @@ from torchsummary import summary
 #----------------------------------------
 #--------- Model related imports --------
 #----------------------------------------
-from modules.network import resnet, dynamic_resnet
-from policy_modules.resnet8 import resnet8
+from modules.networks_for_modified_resnet import modified_resnet, modified_dynamic_resnet
+from modules.networks_for_original_resnet import resnet18, resnet34, resnet50
 
 #----------------------------------------
 #--------- Dataloader related imports ---
@@ -78,7 +78,7 @@ def train_net(args, config):
         config.GPUS = str(local_rank)
 
         # initialize the model and put it to GPU
-        model = eval(config.MODULE)(config.NETWORK)
+        model = eval(config.MODULE)(config=config.NETWORK)
         model = model.cuda()
 
         # wrap the model using torch distributed data parallel
@@ -86,7 +86,7 @@ def train_net(args, config):
 
         # Check if the model requires policy network
         if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
-            policy_model = eval(config.POLICY_MODULE)(config.POLICY.NETWORK)
+            policy_model = eval(config.POLICY_MODULE)(config=config.POLICY.NETWORK)
             policy_model = policy_model.cuda()
 
             # wrap in DDP
@@ -115,12 +115,12 @@ def train_net(args, config):
         torch.cuda.set_device(0)
 
         # initialize the model and put is to GPU
-        model = eval(config.MODULE)(config.NETWORK)
+        model = eval(config.MODULE)(config=config.NETWORK)
         model = model.cuda()
 
         # check for policy model
         if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
-            policy_model= eval(config.POLICY_MODULE)(config.POLICY.NETWORK)
+            policy_model= eval(config.POLICY_MODULE)(config=config.POLICY.NETWORK)
             policy_model = policy_model.cuda()
 
         # summarize the model
