@@ -39,12 +39,12 @@ def make_dataloader(config, dataset=None, mode='train', distributed=False, num_r
 
     if mode == 'train':
         aspect_grouping = config.TRAIN.ASPECT_GROUPING
-        batch_size = config.TRAIN.BATCH_IMAGES * num_gpu
+        batch_size = int(config.TRAIN.BATCH_IMAGES / num_replicas)
         shuffle = config.TRAIN.SHUFFLE
         splits = config.DATASET.TRAIN_SPLIT
     else:
         aspect_grouping = False
-        batch_size = config.VAL.BATCH_IMAGES * num_gpu
+        batch_size = int(config.VAL.BATCH_IMAGES / num_replicas)
         shuffle = config.VAL.SHUFFLE
         splits = config.DATASET.VAL_SPLIT
 
