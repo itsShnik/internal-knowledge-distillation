@@ -106,7 +106,8 @@ def train_net(args, config):
         val_loader = make_dataloader(config, mode='val', distributed=True, num_replicas=world_size, rank=rank)
 
         # set the batch_size
-        batch_size = world_size * config.TRAIN.BATCH_IMAGES
+        # batch_size = world_size * config.TRAIN.BATCH_IMAGES
+        # batch_size config.TRAIN.BATCH_IMAGES / world_size
 
     else:
         # single GPU training
@@ -137,7 +138,7 @@ def train_net(args, config):
         val_loader = make_dataloader(config, mode='val', distributed=False)
 
         # set the batch size
-        batch_size = config.TRAIN.BATCH_IMAGES
+        # batch_size = config.TRAIN.BATCH_IMAGES
 
     # wandb logging
     wandb.watch(model, log='all')
@@ -145,7 +146,7 @@ def train_net(args, config):
         wandb.watch(policy_model, log='all')
 
     # set up the initial learning rate, proportional to batch_size
-    initial_lr = batch_size * config.TRAIN.LR
+    initial_lr = config.TRAIN.LR
 
     # configure the optimizer
     try:
@@ -154,7 +155,7 @@ def train_net(args, config):
         raise ValueError(f'{config.TRAIN.OPTIMIZER}, not supported!!')
 
     if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
-        initial_lr_policy = batch_size * config.POLICY.LR
+        initial_lr_policy = config.POLICY.LR
         try:
             policy_optimizer = eval(f'optim_{config.POLICY.OPTIMIZER}')(model=model, initial_lr=initial_lr_policy, momentum=config.POLICY.MOMENTUM, weight_decay=config.POLICY.WEIGHT_DECAY)
         except:
