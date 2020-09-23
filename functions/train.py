@@ -105,10 +105,6 @@ def train_net(args, config):
         train_loader = make_dataloader(config, mode='train', distributed=True, num_replicas=world_size, rank=rank)
         val_loader = make_dataloader(config, mode='val', distributed=True, num_replicas=world_size, rank=rank)
 
-        # set the batch_size
-        # batch_size = world_size * config.TRAIN.BATCH_IMAGES
-        # batch_size config.TRAIN.BATCH_IMAGES / world_size
-
     else:
         # single GPU training
         # set CUDA device in env variables
@@ -137,15 +133,12 @@ def train_net(args, config):
         train_loader = make_dataloader(config, mode='train', distributed=False)
         val_loader = make_dataloader(config, mode='val', distributed=False)
 
-        # set the batch size
-        # batch_size = config.TRAIN.BATCH_IMAGES
-
     # wandb logging
     wandb.watch(model, log='all')
     if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
         wandb.watch(policy_model, log='all')
 
-    # set up the initial learning rate, proportional to batch_size
+    # set up the initial learning rate
     initial_lr = config.TRAIN.LR
 
     # configure the optimizer
@@ -180,13 +173,6 @@ def train_net(args, config):
     if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
         epoch_end_callbacks.append(LRSchedulerPolicy(config))
         epoch_end_callbacks.append(VisualizationPlotter())
-
-    # TODO: Broadcast the parameters and optimizer state from rank 0 before the start of training
-    #if args.dist:
-    #    for v in model.state_dict().values():
-    #        distributed.broadcast(v, src=0)
-    #    for v in optimizer.state_dict().values():
-    #        distributed.broadcast(v, src=0)
 
     # At last call the training function from trainer
     train(config=config, net=model, optimizer=optimizer, train_loader=train_loader, train_metrics=train_metrics, val_loader=val_loader, val_metrics=val_metrics, policy_net=policy_model if config.NETWORK.TRAINING_STRATEGY in PolicyVec else None, policy_optimizer=policy_optimizer if config.NETWORK.TRAINING_STRATEGY in PolicyVec else None, rank=rank if args.dist else None, batch_end_callbacks=batch_end_callbacks, epoch_end_callbacks=epoch_end_callbacks)
