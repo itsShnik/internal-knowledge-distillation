@@ -7,9 +7,10 @@ import torch
 #--------- Funcs and Classes for Datasets
 #----------------------------------------
 from datasets.cubs import CUBS
+from datasets.imagenet import imagenet
 from datasets.decathlon import decathlon_dataset
 
-DATASETS = {'cubs':CUBS}
+DATASET_CATALOGS = {'cubs':CUBS, 'imagenet':imagenet}
 DECATHLON_DATASETS = {'imagenet12', 'cifar100', 'aircraft', 'gtsrb', 'omniglot', 'dtd', 'vgg-flowers', 'daimlerpedcls', 'svhn', 'ucf101'}
 
 def build_dataset(dataset_name, *args, **kwargs):
@@ -53,7 +54,7 @@ def make_dataloader(config, dataset=None, mode='train', distributed=False, num_r
         if config.DATASET.DATASET_NAME in DECATHLON_DATASETS:
             dataset = decathlon_dataset(name=config.DATASET.DATASET_NAME, root=config.DATASET.ROOT_PATH, splits=splits, toy=config.DATASET.TOY)
         else:
-            dataset = build_dataset(dataset_name=config.DATASET.DATASET, root=config.DATASET.ROOT_PATH, splits=splits, toy=config.DATASET.TOY)
+            dataset = build_dataset(dataset_name=config.DATASET.DATASET_NAME, root=config.DATASET.ROOT_PATH, splits=splits, toy=config.DATASET.TOY)
 
     sampler = make_data_sampler(dataset, shuffle, distributed, num_replicas, rank)
     batch_sampler = make_batch_data_sampler(dataset, sampler, batch_size)
