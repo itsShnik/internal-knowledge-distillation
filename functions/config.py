@@ -33,6 +33,7 @@ _C.DATASET.TOY = False
 #----------------------------------------
 _C.NETWORK = edict()
 _C.NETWORK.PRETRAINED_MODEL = ''
+_C.NETWORK.PRETRAINED_LOADING_METHOD = 'standard'
 _C.NETWORK.TRAINING_STRATEGY = 'standard'
 
 _C.NETWORK.MAIN = edict()
