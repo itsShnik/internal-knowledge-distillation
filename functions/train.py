@@ -158,7 +158,7 @@ def train_net(args, config):
     if config.NETWORK.PRETRAINED_MODEL != '':
         print(f"Loading the pretrained model from {config.NETWORK.PRETRAINED_MODEL} ...")
         pretrain_state_dict = torch.load(config.NETWORK.PRETRAINED_MODEL, map_location = lambda storage, loc: storage)['net_state_dict']
-        smart_model_load(model, pretrain_state_dict)
+        smart_model_load(model, pretrain_state_dict, loading_method=config.NETWORK.PRETRAINED_LOADING_METHOD)
 
     # Set up the metrics
     train_metrics = TrainMetrics(config, allreduce=False)
