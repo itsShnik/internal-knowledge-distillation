@@ -1,19 +1,20 @@
 ---
 RNG_SEED: -1
-MODULE: 'dynamic_resnet'
+MODULE: 'resnet34'
 GPUS: '1,2,3,4'
 NUM_WORKERS_PER_GPU: 4
-VERSION: 'resnet-dynamic_heavy-imagenet'
-NUM_CLASSES: 1000
+VERSION: 'resnet34_from_pretrained18_standard'
 
 DATASET:
-    DATASET_NAME: 'imagenet12'
-    ROOT_PATH: 'data/decathlon-1.0/'
+    DATASET_NAME: 'imagenet'
+    ROOT_PATH: 'data/Imagenet'
     TRAIN_SPLIT: 'train'
     VAL_SPLIT: 'val'
     TOY: True
 
 NETWORK:
+    PRETRAINED_MODEL: 'ckpts/original_imagenet_original_resnet18'
+    PRETRAINED_LOADING_METHOD: 'standard'
     MAIN:
         LAYERS:
             - 4
@@ -37,7 +38,7 @@ NETWORK:
             - 4
             - 4
             - 4
-        SWITCH: True
+        SWITCH: False
         CONV_LAYER: 'conv5x5'
         BLOCK: 'BasicBlock'
 
