@@ -95,7 +95,7 @@ def train_net(args, config):
         # summarize the model
         if rank == 0:
             print("summarizing the main network")
-            summary(model, (3, 64, 64))
+            summary(model, (3, 224, 224))
 
             if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
                 print("summarizing the policy network")
