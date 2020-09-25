@@ -70,3 +70,43 @@ def parallel_model_load(model, pretrain_state_dict):
     new_state_dict.update(parsed_state_dict)
     model.load_state_dict(new_state_dict)
 
+def from_previous_layers_model_load(model, pretrain_state_dict):
+
+    # parse from multiple gpu to single or vice versa
+    parsed_state_dict = {}
+    for k, v in pretrain_state_dict.items():
+        if k not in model.state_dict():
+            if k.startswith('module.'):
+                k = k[len('module.'):]
+            else:
+                k = 'module.' + k
+        if k in model.state_dict():
+            parsed_state_dict[k] = v
+
+    # Initialize the 3rd, 4th, 5th and maybe 6th block with 2nd block
+    for k in model.state_dict():
+        # The index at which block num is in k_split
+        if k.startswith('module.'):
+            ind = 2
+        else:
+            ind = 1
+        # Check if it is not in parsed_state_dict
+        if k not in parsed_state_dict:
+            k_split = k.split('.')
+            if int(k_split[ind]) >= 2:
+                k_split[ind] = '1'
+            modified_k = '.'.join(k_split)
+            if modified_k in parsed_state_dict:
+                parsed_state_dict[k] = parsed_state_dict[modified_k]
+        else:
+            continue
+
+    # delete the linear classifier
+    for k in model.state_dict():
+        if k.startswith('module.linear') or k.startswith('linear'):
+            del parsed_state_dict[k]
+
+    # Now load this state dict to our model
+    new_state_dict = model.state_dict()
+    new_state_dict.update(parsed_state_dict)
+    model.load_state_dict(new_state_dict)
