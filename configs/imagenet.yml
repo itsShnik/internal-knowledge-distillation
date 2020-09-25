@@ -3,7 +3,7 @@ RNG_SEED: -1
 MODULE: 'resnet34'
 GPUS: '1,2,3,4'
 NUM_WORKERS_PER_GPU: 4
-VERSION: 'resnet34_from_pretrained18_standard'
+VERSION: 'resnet34_from_pretrained18_from_previous_layers'
 
 DATASET:
     DATASET_NAME: 'imagenet'
@@ -13,8 +13,8 @@ DATASET:
     TOY: True
 
 NETWORK:
-    PRETRAINED_MODEL: 'ckpts/original_imagenet_original_resnet18'
-    PRETRAINED_LOADING_METHOD: 'standard'
+    PRETRAINED_MODEL: 'ckpts/original_imagenet_original_resnet18/best.pth'
+    PRETRAINED_LOADING_METHOD: 'from_previous_layers'
     MAIN:
         LAYERS:
             - 4
@@ -43,8 +43,8 @@ NETWORK:
         BLOCK: 'BasicBlock'
 
 TRAIN:
-    BATCH_IMAGES: 128
-    LR: 0.0008
+    BATCH_IMAGES: 256
+    LR: 0.1
     MOMENTUM: 0.9
     WEIGHT_DECAY: 0.0001
     OPTIMIZER: 'SGD'
@@ -59,5 +59,5 @@ TRAIN:
     END_EPOCH: 110
 
 VAL:
-    BATCH_IMAGES: 128
+    BATCH_IMAGES: 256
     SHUFFLE: False
