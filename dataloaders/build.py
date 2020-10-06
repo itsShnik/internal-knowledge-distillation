@@ -8,9 +8,10 @@ import torch
 #----------------------------------------
 from datasets.cubs import CUBS
 from datasets.imagenet import imagenet
+from datasets.cifar import cifar10, cifar100
 from datasets.decathlon import decathlon_dataset
 
-DATASET_CATALOGS = {'cubs':CUBS, 'imagenet':imagenet}
+DATASET_CATALOGS = {'cubs':CUBS, 'imagenet':imagenet, 'cifar10':cifar10, 'cifar100':cifar100}
 DECATHLON_DATASETS = {'imagenet12', 'cifar100', 'aircraft', 'gtsrb', 'omniglot', 'dtd', 'vgg-flowers', 'daimlerpedcls', 'svhn', 'ucf101'}
 
 def build_dataset(dataset_name, *args, **kwargs):
@@ -37,6 +38,7 @@ def make_dataloader(config, dataset=None, mode='train', distributed=False, num_r
     # config variables
     num_gpu = len(config.GPUS.split(','))
     num_workers = config.NUM_WORKERS_PER_GPU * num_gpu
+    num_replicas = 1 if num_replicas is None else num_replicas
 
     if mode == 'train':
         aspect_grouping = config.TRAIN.ASPECT_GROUPING
