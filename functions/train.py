@@ -19,8 +19,8 @@ from torchsummary import summary
 #----------------------------------------
 #--------- Model related imports --------
 #----------------------------------------
-from modules.networks_for_modified_resnet import modified_resnet, modified_dynamic_resnet
-from modules.networks_for_original_resnet import resnet18, resnet34, resnet50
+from modules.networks_for_modified_resnet import *
+from modules.networks_for_original_resnet import *
 
 #----------------------------------------
 #--------- Dataloader related imports ---
