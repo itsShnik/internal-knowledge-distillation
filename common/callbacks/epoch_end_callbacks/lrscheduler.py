@@ -8,7 +8,7 @@ class LRScheduler():
 
     def __call__(self, epoch=0, optimizer=None, **kwargs):
 
-        if epoch in self.steps:
+        if (epoch+1) in self.steps:
             # decay the LR for all param groups in optimizer
             for param_group in optimizer.param_groups:
                 param_group['lr'] = param_group['lr'] * self.decay
