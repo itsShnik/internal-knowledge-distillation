@@ -1,7 +1,7 @@
 #----------------------------------------
 #--------- Resnet Imports ---------------
 #----------------------------------------
-from resnets.original_resnet import ResNet, BasicBlock
+from resnets.original_resnet import ResNet, BasicBlock, Bottleneck
 
 def _resnet(arch, block, layers, **kwargs):
     model = ResNet(block, layers, **kwargs)
