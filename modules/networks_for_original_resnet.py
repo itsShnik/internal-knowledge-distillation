@@ -4,7 +4,15 @@
 from resnets.original_resnet import ResNet, BasicBlock, Bottleneck
 
 def _resnet(arch, block, layers, **kwargs):
-    model = ResNet(block, layers, **kwargs)
+    """
+    This is a good level for unpacking keworded arguments
+    """
+    config = kwargs['config']
+
+    # Number of classes for the classifier layer
+    num_classes = config.MAIN.NUM_CLASS
+
+    model = ResNet(block, layers, num_classes=num_classes)
     return model
 
 
