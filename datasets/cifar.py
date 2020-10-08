@@ -21,6 +21,7 @@ def cifar10(root='data/cifar-10', splits='train', toy=False):
                 transform=transforms.Compose([
                     transforms.RandomCrop(32, padding=4),
                     transforms.RandomHorizontalFlip(),
+                    transforms.RandomRotation(15),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=[0.507, 0.487, 0.441], std=[0.267, 0.256, 0.276])
                 ]))
@@ -46,6 +47,7 @@ def cifar100(root='data/cifar-100', splits='train', toy=False):
                 transform=transforms.Compose([
                     transforms.RandomCrop(32, padding=4),
                     transforms.RandomHorizontalFlip(),
+                    transforms.RandomRotation(15),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=[0.507, 0.487, 0.441], std=[0.267, 0.256, 0.276])
                 ]))
