@@ -21,6 +21,7 @@ from torchsummary import summary
 #----------------------------------------
 from modules.networks_for_modified_resnet import *
 from modules.networks_for_original_resnet import *
+from modules.networks_for_cifar_resnet import *
 
 #----------------------------------------
 #--------- Dataloader related imports ---
@@ -30,7 +31,7 @@ from dataloaders.build import make_dataloader, build_dataset
 #----------------------------------------
 #--------- Imports from common ----------
 #----------------------------------------
-from common.optim import optim_SGD, optim_AdamW
+from common.optim import *
 from common.utils import smart_model_load
 from common.trainer import PolicyVec, train
 from common.metrics.train_metrics import TrainMetrics
