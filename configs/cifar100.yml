@@ -1,0 +1,39 @@
+---
+RNG_SEED: -1
+MODULE: 'cifar_resnet101'
+GPUS: '1,2,3,4'
+NUM_WORKERS_PER_GPU: 4
+VERSION: 'cifar100_cifar_resnet101'
+
+DATASET:
+    DATASET_NAME: 'cifar100_original'
+    ROOT_PATH: 'data/cifar-100'
+    TRAIN_SPLIT: 'train'
+    VAL_SPLIT: 'val'
+    TOY: True
+
+NETWORK:
+    PRETRAINED_MODEL: ''
+    PRETRAINED_LOADING_METHOD: 'standard'
+    MAIN:
+        NUM_CLASS: 100
+
+TRAIN:
+    BATCH_IMAGES: 128
+    LR: 0.1
+    MOMENTUM: 0.9
+    WEIGHT_DECAY: 0.0005
+    OPTIMIZER: 'SGD'
+    LR_STEPS:
+        - 60
+        - 120
+        - 160
+    LR_DECAY: 0.2
+    ASPECT_GROUPING: False
+    SHUFFLE: True
+    BEGIN_EPOCH: 0
+    END_EPOCH: 200
+
+VAL:
+    BATCH_IMAGES: 128
+    SHUFFLE: False
