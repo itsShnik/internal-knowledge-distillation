@@ -22,7 +22,7 @@ NETWORK:
             - 4
         CONV_LAYER: 'conv3x3'
         BLOCK: 'BasicBlock'
-        NUM_CLASS: 1000
+        NUM_CLASS: 10
     PARALLEL:
         SWITCH: False
     LIGHT:
