@@ -1,0 +1,20 @@
+---
+RNG_SEED: -1
+MODULE: 'cifar_resnet101'
+NUM_WORKERS_PER_GPU: 4
+VERSION: 'cifar100_cifar_resnet101_from_cifar_resnet101'
+
+DATASET:
+    DATASET_NAME: 'cifar100_original'
+    ROOT_PATH: 'data/cifar-100'
+    VAL_SPLIT: 'val'
+
+NETWORK:
+    PRETRAINED_MODEL: 'ckpts/cifar100_cifar_resnet101/best.pth'
+    PRETRAINED_LOADING_METHOD: 'standard'
+    MAIN:
+        NUM_CLASS: 100
+
+VAL:
+    BATCH_IMAGES: 128
+    SHUFFLE: False
