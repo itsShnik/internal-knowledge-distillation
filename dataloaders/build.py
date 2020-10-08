@@ -11,7 +11,7 @@ from datasets.imagenet import imagenet
 from datasets.cifar import cifar10, cifar100
 from datasets.decathlon import decathlon_dataset
 
-DATASET_CATALOGS = {'cubs':CUBS, 'imagenet':imagenet, 'cifar10':cifar10, 'cifar100':cifar100}
+DATASET_CATALOGS = {'cubs':CUBS, 'imagenet':imagenet, 'cifar10':cifar10, 'cifar100_original':cifar100}
 DECATHLON_DATASETS = {'imagenet12', 'cifar100', 'aircraft', 'gtsrb', 'omniglot', 'dtd', 'vgg-flowers', 'daimlerpedcls', 'svhn', 'ucf101'}
 
 def build_dataset(dataset_name, *args, **kwargs):
