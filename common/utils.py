@@ -60,6 +60,39 @@ def standard_with_classifier_model_load(model, pretrain_state_dict):
     new_state_dict.update(parsed_state_dict)
     model.load_state_dict(new_state_dict)
 
+def res50_from_res101_manual_model_load(model, pretrain_state_dict):
+
+    # parse from multiple gpu to single or vice versa
+    parsed_state_dict = {}
+    for k, v in pretrain_state_dict.items():
+        if k in model.state_dict():
+            parsed_state_dict[k] = v
+
+    # Define the dictionary for picking
+    replacement = {
+            '1': 10,
+            '2': 19,
+            '3': 20,
+            '4': 21,
+            '5': 22,
+            }
+
+    # Replacement function for layer3.* blocks
+    for k in parsed_state_dict.keys():
+        if k.startswith('layer3'):
+            split = k.split('.')
+            block_num = split[1]
+            if block_num in replacement:
+                split[1] = str(replacement[block_num])
+                layer_name = '.'.join(split)
+                assert layer_name in pretrain_state_dict, "Wrong replacement!!"
+                parsed_state_dict[k] = pretrain_state_dict[layer_name]
+
+    # Now load this state dict to our model
+    new_state_dict = model.state_dict()
+    new_state_dict.update(parsed_state_dict)
+    model.load_state_dict(new_state_dict)
+
 def parallel_model_load(model, pretrain_state_dict):
 
     # parse from multiple gpu to single or vice versa
