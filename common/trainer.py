@@ -114,13 +114,18 @@ def train(config,
                 policy_decisions = policy_decisions + policy.clone().detach().sum(0)
                 policy_max += policy.size(0)
                 outputs = net(images, policy)
+                loss = criterion(outputs, labels)
+
+            elif config.NETWORK.TRAINING_STRATEGY == 'AdditionalHeads':
+                outputs, additional_outputs = net(images, additional_masks=config.NETWORK.ADDITIONAL_MASKS)
+                loss = criterion(outputs, labels)
+                loss += criterion(additional_outputs, labels)
+
             else:
                 outputs = net(images)
+                loss = criterion(outputs, labels)
 
             forward_time = time.time() - forward_time
-
-            # calculate losses
-            loss = criterion(outputs, labels)
 
             # update training metrics
             metric_time = time.time()
@@ -173,7 +178,10 @@ def train(config,
             end_time = time.time()
 
         # First do validation at the end of each epoch
-        val_acc = do_validation(net, val_loader, policy_net=policy_net)
+        if config.NETWORK.TRAINING_STRATEGY == 'AdditionalHeads':
+            val_acc, additional_val_acc = do_validation(config, net, val_loader, policy_net=policy_net)
+        else:
+            val_acc = do_validation(config, net, val_loader, policy_net=policy_net)
 
         # update validation metrics
         val_metrics.update(epoch, val_acc)
@@ -182,7 +190,10 @@ def train(config,
         metrics = val_metrics.get()
 
         # log val metrics
-        wandb.log({'Val Acc': metrics['current_val_acc'], 'Best Val Acc': metrics['best_val_acc'], 'Best Val Epoch': metrics['best_val_epoch']})
+        if config.NETWORK.TRAINING_STRATEGY == 'AdditionalHeads':
+            wandb.log({'Val Acc': metrics['current_val_acc'], 'Best Val Acc': metrics['best_val_acc'], 'Best Val Epoch': metrics['best_val_epoch'], 'Additional Val Acc': additional_val_acc})
+        else:
+            wandb.log({'Val Acc': metrics['current_val_acc'], 'Best Val Acc': metrics['best_val_acc'], 'Best Val Epoch': metrics['best_val_epoch']})
 
         # print the validation accuracy
         print('Validation accuracy for epoch {}: {:.4f}'.format(epoch, metrics["current_val_acc"]))
