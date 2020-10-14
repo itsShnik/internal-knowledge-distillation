@@ -127,8 +127,9 @@ class ResNet(nn.Module):
 
     def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
-                 norm_layer=None, **kwargs):
+                 norm_layer=None, training_strategy ='standard', **kwargs):
         super(ResNet, self).__init__()
+        self.training_strategy = training_strategy
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
@@ -157,8 +158,15 @@ class ResNet(nn.Module):
                                        dilate=replace_stride_with_dilation[1])
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
                                        dilate=replace_stride_with_dilation[2])
+
+        self.all_layers = nn.ModuleList([self.layer1, self.layer2, self.layer3, self.layer4])
+
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
+
+        if self.training_strategy == 'AdditionalHeads':
+            self.additional_avgpool = nn.AdaptiveAvgPool2d((1, 1))
+            self.additional_fc = nn.Linear(512 * block.expansion, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -199,24 +207,49 @@ class ResNet(nn.Module):
                                 base_width=self.base_width, dilation=self.dilation,
                                 norm_layer=norm_layer))
 
-        return nn.Sequential(*layers)
+        return nn.ModuleList(layers)
 
-    def _forward_impl(self, x):
+    def forward(self, x, additional_masks=None):
         # See note [TorchScript super()]
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
 
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
+        if self.training_strategy == 'AdditionalHeads':
 
-        x = self.avgpool(x)
-        x = torch.flatten(x, 1)
-        x = self.fc(x)
+            # Clone for the additional branch
+            additional_x = x.clone()
 
-        return x
+            # Calculate outputs for main branch and then for the other branch
+            for layer in self.all_layers:
+                for block in layer:
+                    x = block(x)
 
-    def forward(self, x):
-        return self._forward_impl(x)
+            x = self.avgpool(x)
+            x = torch.flatten(x, 1)
+            x = self.fc(x)
+
+            block_count = 0
+            for layer_ind, layer in enumerate(self.all_layers):
+                for block_ind, block in enumerate(layer):
+                    if block_count not in additional_masks:
+                        additional_x = block(additional_x)
+                    block_count += 1
+
+            additional_x = self.additional_avgpool(additional_x)
+            additional_x = torch.flatten(additional_x, 1)
+            additional_x = self.additional_fc(additional_x)
+
+            return x, additional_x
+
+        else:
+
+            for layer in self.all_layers:
+                for block in layer:
+                    x = block(x)
+
+            x = self.avgpool(x)
+            x = torch.flatten(x, 1)
+            x = self.fc(x)
+
+            return x
