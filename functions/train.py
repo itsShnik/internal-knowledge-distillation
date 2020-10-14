@@ -124,7 +124,7 @@ def train_net(args, config):
         # summarize the model
         print("summarizing the model")
         print(model)
-        summary(model, (3, 64, 64))
+        #summary(model, (3, 64, 64))
 
         if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
             print("Summarizing the policy model")
@@ -135,7 +135,7 @@ def train_net(args, config):
         val_loader = make_dataloader(config, mode='val', distributed=False)
 
     # wandb logging
-    wandb.watch(model, log='all')
+    #wandb.watch(model, log='all')
     if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
         wandb.watch(policy_model, log='all')
 
