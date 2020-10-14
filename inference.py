@@ -73,7 +73,7 @@ def main():
     Pass the model and val loader for validation
     """
     print("Inference started!!")
-    val_accuracy = do_validation(model, val_loader)
+    val_accuracy = do_validation(config, model, val_loader)
     print(f"Inference complete!!\nAccuracy:{val_accuracy}")
 
     wandb.log({'Accuracy': val_accuracy})
