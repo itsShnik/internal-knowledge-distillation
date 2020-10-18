@@ -36,7 +36,7 @@ def make_batch_data_sampler(dataset, sampler, batch_size):
 def make_dataloader(config, dataset=None, mode='train', distributed=False, num_replicas=None, rank=None):
 
     # config variables
-    num_gpu = len(config.GPUS.split(','))
+    num_gpu = len(config.GPUS) if isinstance(config.GPUS, list) else len(config.GPUS.split(','))
     num_workers = config.NUM_WORKERS_PER_GPU * num_gpu
     num_replicas = 1 if num_replicas is None else num_replicas
 
