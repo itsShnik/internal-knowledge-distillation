@@ -9,7 +9,7 @@ import wandb
 #----------------------------------------
 import numpy as np
 import torch
-import torch.nn
+import torch.nn as nn
 import torch.optim as optim
 import torch.distributed as distributed
 import torchvision.models as models
@@ -96,25 +96,30 @@ def train_net(args, config):
         # summarize the model
         if rank == 0:
             print("summarizing the main network")
-            summary(model, (3, 224, 224))
+            print(model)
 
             if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
                 print("summarizing the policy network")
-                summary(policy_model, (3, 64, 64))
+                print(policy_model)
 
         # dataloaders for training, val and test set
         train_loader = make_dataloader(config, mode='train', distributed=True, num_replicas=world_size, rank=rank)
         val_loader = make_dataloader(config, mode='val', distributed=True, num_replicas=world_size, rank=rank)
 
     else:
-        # single GPU training
         # set CUDA device in env variables
-        config.GPUS = str(0)
-        torch.cuda.set_device(0)
+        config.GPUS = [*range(len((config.GPUS).split(',')))] if args.data_parallel else str(0)
+        print(f"config.GPUS = {config.GPUS}")
 
         # initialize the model and put is to GPU
         model = eval(config.MODULE)(config=config.NETWORK)
-        model = model.cuda()
+
+        if args.data_parallel:
+            model = model.cuda()
+            model = nn.DataParallel(model, device_ids=config.GPUS)
+        else:
+            torch.cuda.set_device(0)
+            model = model.cuda()
 
         # check for policy model
         if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
