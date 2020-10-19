@@ -12,8 +12,9 @@ def _resnet(arch, block, layers, **kwargs):
     # Number of classes for the classifier layer
     num_classes = config.MAIN.NUM_CLASS
     training_strategy = config.TRAINING_STRATEGY
+    num_additional_heads = config.NUM_ADDITIONAL_HEADS
 
-    model = ResNet(block, layers, num_classes=num_classes, training_strategy=training_strategy)
+    model = ResNet(block, layers, num_classes=num_classes, training_strategy=training_strategy, num_additional_heads=num_additional_heads)
     return model
 
 
