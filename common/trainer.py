@@ -117,9 +117,10 @@ def train(config,
                 loss = criterion(outputs, labels)
 
             elif config.NETWORK.TRAINING_STRATEGY == 'AdditionalHeads':
-                outputs, additional_outputs = net(images, additional_masks=config.NETWORK.ADDITIONAL_MASKS)
+                outputs, additional_outputs = net(images)
                 loss = criterion(outputs, labels)
-                loss += criterion(additional_outputs, labels)
+                for output in additional_outputs:
+                    loss += criterion(output, labels)
 
             else:
                 outputs = net(images)
@@ -191,9 +192,10 @@ def train(config,
 
         # log val metrics
         if config.NETWORK.TRAINING_STRATEGY == 'AdditionalHeads':
-            wandb.log({'Val Acc': metrics['current_val_acc'], 'Best Val Acc': metrics['best_val_acc'], 'Best Val Epoch': metrics['best_val_epoch'], 'Additional Val Acc': additional_val_acc})
-        else:
-            wandb.log({'Val Acc': metrics['current_val_acc'], 'Best Val Acc': metrics['best_val_acc'], 'Best Val Epoch': metrics['best_val_epoch']})
+            for index, acc in enumerate(additional_val_acc):
+                wandb.log({f'Additional Val Acc {index+1}':acc})
+
+        wandb.log({'Val Acc': metrics['current_val_acc'], 'Best Val Acc': metrics['best_val_acc'], 'Best Val Epoch': metrics['best_val_epoch']})
 
         # print the validation accuracy
         print('Validation accuracy for epoch {}: {:.4f}'.format(epoch, metrics["current_val_acc"]))
