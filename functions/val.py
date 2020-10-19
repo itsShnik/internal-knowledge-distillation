@@ -18,8 +18,8 @@ def do_validation(config, net, val_loader, policy_net=None):
     total_instances = 0
 
     if config.NETWORK.TRAINING_STRATEGY == 'AdditionalHeads':
-        additional_correct_instances = 0
-        additional_total_instances = 0
+        additional_correct_instances = [0] * config.NETWORK.NUM_ADDITIONAL_HEADS
+        additional_total_instances = [0] * config.NETWORK.NUM_ADDITIONAL_HEADS
 
     for nbatch, batch in enumerate(val_loader):
         images, labels = to_cuda(batch)
@@ -31,7 +31,7 @@ def do_validation(config, net, val_loader, policy_net=None):
             policy = policy_action[:,:,1]
             outputs = net(images, policy)
         elif config.NETWORK.TRAINING_STRATEGY == 'AdditionalHeads':
-            outputs, additional_outputs = net(images, config.NETWORK.ADDITIONAL_MASKS)
+            outputs, additional_outputs = net(images)
         else:
             outputs = net(images)
 
@@ -42,16 +42,20 @@ def do_validation(config, net, val_loader, policy_net=None):
 
         # calculate additional accuracy if have to 
         if config.NETWORK.TRAINING_STRATEGY == 'AdditionalHeads':
-            additional_predicted = torch.argmax(additional_outputs.data, 1)
-            additional_total_instances += labels.size(0)
-            additional_correct_instances += (additional_predicted == labels).sum().item()
+            for i in range(config.NETWORK.NUM_ADDITIONAL_HEADS):
+                additional_predicted = torch.argmax(additional_outputs[i].data, 1)
+                additional_total_instances[i] += labels.size(0)
+                additional_correct_instances[i] += (additional_predicted == labels).sum().item()
 
     # return accuracy
     val_acc = (100.0 * correct_instances) / total_instances
 
     # additional val acc
     if config.NETWORK.TRAINING_STRATEGY == 'AdditionalHeads':
-        additional_val_acc = (100.0 * additional_correct_instances) / additional_total_instances
-        return val_acc, additional_val_acc
+        return_list = []
+        for i in range(config.NETWORK.NUM_ADDITIONAL_HEADS):
+            additional_val_acc = (100.0 * additional_correct_instances[i]) / additional_total_instances[i]
+            return_list.append(additional_val_acc)
+        return val_acc, return_list
 
     return val_acc
