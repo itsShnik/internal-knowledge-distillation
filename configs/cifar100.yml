@@ -2,8 +2,8 @@
 RNG_SEED: -1
 MODULE: 'cifar_resnet101'
 GPUS: '1,2,3,4'
-NUM_WORKERS_PER_GPU: 4
-VERSION: 'cifar100_cresnet101_AH_50_with_acc_manual_III'
+NUM_WORKERS_PER_GPU: 1
+VERSION: 'cifar100_cresnet101_AH_50_man1_data_parallel'
 
 DATASET:
     DATASET_NAME: 'cifar100_original'
@@ -15,25 +15,25 @@ DATASET:
 NETWORK:
     PRETRAINED_MODEL: ''
     PRETRAINED_LOADING_METHOD: 'standard'
-    TRAINING_STRATEGY: 'AdditionalHeads'
+    TRAINING_STRATEGY: 'standard'
     ADDITIONAL_MASKS:
         - 8
         - 9
         - 10
         - 11
-        - 12
         - 13
+        - 14
         - 15
         - 16
-        - 17
         - 18
         - 19
         - 20
-        - 22
+        - 21
         - 23
         - 24
         - 25
         - 26
+        - 28
     MAIN:
         NUM_CLASS: 100
 
