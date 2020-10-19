@@ -4,6 +4,11 @@ To reduce overfitting on CIFAR-100 dataset, changed the initial conv layers
 import torch
 import torch.nn as nn
 
+#----------------------------------------
+#--------- Common imports ---------------
+#----------------------------------------
+from common.utils import generate_additional_head_masks_to_res50
+
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
            'resnet152', 'resnext50_32x4d', 'resnext101_32x8d',
@@ -127,9 +132,10 @@ class ResNet(nn.Module):
 
     def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
-                 norm_layer=None, training_strategy ='standard', **kwargs):
+                 norm_layer=None, training_strategy ='standard', num_additional_heads=1, **kwargs):
         super(ResNet, self).__init__()
         self.training_strategy = training_strategy
+        self.num_additional_heads = num_additional_heads
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
@@ -165,8 +171,27 @@ class ResNet(nn.Module):
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
         if self.training_strategy == 'AdditionalHeads':
-            self.additional_avgpool = nn.AdaptiveAvgPool2d((1, 1))
-            self.additional_fc = nn.Linear(512 * block.expansion, num_classes)
+
+            # Sorry for the hardcode
+            if self.num_additional_heads >= 1:
+                self.additional_avgpool_1 = nn.AdaptiveAvgPool2d((1, 1))
+                self.additional_fc_1 = nn.Linear(512 * block.expansion, num_classes)
+                self.additional_masks_1 = generate_additional_head_masks_to_res50()
+
+            if self.num_additional_heads >= 2:
+                self.additional_avgpool_2 = nn.AdaptiveAvgPool2d((1, 1))
+                self.additional_fc_2 = nn.Linear(512 * block.expansion, num_classes)
+                self.additional_masks_2 = generate_additional_head_masks_to_res50()
+
+            if self.num_additional_heads >= 3:
+                self.additional_avgpool_3 = nn.AdaptiveAvgPool2d((1, 1))
+                self.additional_fc_3 = nn.Linear(512 * block.expansion, num_classes)
+                self.additional_masks_3 = generate_additional_head_masks_to_res50()
+
+            if self.num_additional_heads >= 4:
+                self.additional_avgpool_4 = nn.AdaptiveAvgPool2d((1, 1))
+                self.additional_fc_4 = nn.Linear(512 * block.expansion, num_classes)
+                self.additional_masks_4 = generate_additional_head_masks_to_res50()
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -209,7 +234,7 @@ class ResNet(nn.Module):
 
         return nn.ModuleList(layers)
 
-    def forward(self, x, additional_masks=None):
+    def forward(self, x):
         # See note [TorchScript super()]
         x = self.conv1(x)
         x = self.bn1(x)
@@ -217,8 +242,21 @@ class ResNet(nn.Module):
 
         if self.training_strategy == 'AdditionalHeads':
 
-            # Clone for the additional branch
-            additional_x = x.clone()
+            return_list = []
+
+            # First calculate the additional branches
+            for i in range(1, self.num_additional_heads+1):
+                additional_x_output = x.clone()
+                for layer_ind, layer in enumerate(self.all_layers):
+                    for block_ind, block in enumerate(layer):
+                        if layer_ind != 2 or block_ind in eval(f'self.additional_masks_{i}'):
+                            additional_x_output = block(additional_x_output)
+
+                additional_x_output = eval(f'self.additional_avgpool_{i}')(additional_x_output)
+                additional_x_output = torch.flatten(additional_x_output, 1)
+                additional_x_output = eval(f'self.additional_fc_{i}')(additional_x_output)
+
+                return_list.append(additional_x_output)
 
             # Calculate outputs for main branch and then for the other branch
             for layer in self.all_layers:
@@ -229,18 +267,7 @@ class ResNet(nn.Module):
             x = torch.flatten(x, 1)
             x = self.fc(x)
 
-            block_count = 0
-            for layer_ind, layer in enumerate(self.all_layers):
-                for block_ind, block in enumerate(layer):
-                    if block_count not in additional_masks:
-                        additional_x = block(additional_x)
-                    block_count += 1
-
-            additional_x = self.additional_avgpool(additional_x)
-            additional_x = torch.flatten(additional_x, 1)
-            additional_x = self.additional_fc(additional_x)
-
-            return x, additional_x
+            return x, return_list
 
         else:
 
