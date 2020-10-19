@@ -3,6 +3,11 @@
 #----------------------------------------
 import torch
 
+#----------------------------------------
+#--------- Library Imports --------------
+#----------------------------------------
+import random
+
 def to_cuda(batch):
     # convert batch: tuple to batch: list
     batch = list(batch)
@@ -12,6 +17,19 @@ def to_cuda(batch):
         batch[i] = batch[i].cuda(non_blocking=True)
 
     return batch
+
+def generate_additional_head_masks_to_res50():
+    """
+    There are 23 blocks in ResNet101, 6 in ResNet50,
+    We need to return a list containing 6 indices,
+    conditions: It must contain 0, 22 and rest can be random
+    """
+
+    first_index = [0]
+    last_index = [22]
+    rest_of_the_indices = random.sample(range(1,22), 4)
+
+    return first_index + rest_of_the_indices + last_index
 
 def smart_model_load(model, pretrain_state_dict, loading_method='standard'):
 
