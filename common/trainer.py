@@ -169,7 +169,7 @@ def train(config,
                 _multiple_callbacks(batch_end_callbacks, batch_end_params)
 
 
-            if nbatch % 50 == 0:
+            if nbatch % 100 == 0:
                 # Print accuracy and loss
                 metrics = train_metrics.get()
                 wandb.log({'Batch Accuracy': metrics["batch_accuracy"], 'Train Accuracy': metrics['training_accuracy'], 'Train Loss':metrics['training_loss']})
