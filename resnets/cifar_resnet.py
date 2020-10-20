@@ -176,22 +176,26 @@ class ResNet(nn.Module):
             if self.num_additional_heads >= 1:
                 self.additional_avgpool_1 = nn.AdaptiveAvgPool2d((1, 1))
                 self.additional_fc_1 = nn.Linear(512 * block.expansion, num_classes)
-                self.additional_masks_1 = generate_additional_head_masks_to_res50()
+                self.additional_masks_1 = [0,5,10,15,20,22]
+                print(f"Additional Masks 1 = {self.additional_masks_1}")
 
             if self.num_additional_heads >= 2:
                 self.additional_avgpool_2 = nn.AdaptiveAvgPool2d((1, 1))
                 self.additional_fc_2 = nn.Linear(512 * block.expansion, num_classes)
-                self.additional_masks_2 = generate_additional_head_masks_to_res50()
+                self.additional_masks_2 = [0,6,12,18,21,22]
+                print(f"Additional Masks 2 = {self.additional_masks_2}")
 
             if self.num_additional_heads >= 3:
                 self.additional_avgpool_3 = nn.AdaptiveAvgPool2d((1, 1))
                 self.additional_fc_3 = nn.Linear(512 * block.expansion, num_classes)
                 self.additional_masks_3 = generate_additional_head_masks_to_res50()
+                print(f"Additional Masks 3 = {self.additional_masks_3}")
 
             if self.num_additional_heads >= 4:
                 self.additional_avgpool_4 = nn.AdaptiveAvgPool2d((1, 1))
                 self.additional_fc_4 = nn.Linear(512 * block.expansion, num_classes)
                 self.additional_masks_4 = generate_additional_head_masks_to_res50()
+                print(f"Additional Masks 4 = {self.additional_masks_4}")
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
