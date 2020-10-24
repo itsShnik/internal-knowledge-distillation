@@ -10,9 +10,9 @@ def _resnet(arch, block, layers, **kwargs):
     config = kwargs['config']
 
     # Number of classes for the classifier layer
-    num_classes = config.MAIN.NUM_CLASS
-    training_strategy = config.TRAINING_STRATEGY
-    num_additional_heads = config.NUM_ADDITIONAL_HEADS
+    num_classes = config.MAIN.NUM_CLASS if ('MAIN' in config and 'NUM_CLASS' in config.MAIN) else 100
+    training_strategy = config.TRAINING_STRATEGY if 'TRAINING_STRATEGY' in config else 'standard'
+    num_additional_heads = config.NUM_ADDITIONAL_HEADS if 'NUM_ADDITIONAL_HEADS' in config else 1
 
     model = ResNet(block, layers, num_classes=num_classes, training_strategy=training_strategy, num_additional_heads=num_additional_heads)
     return model
