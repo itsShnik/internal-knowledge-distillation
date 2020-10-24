@@ -1,0 +1,50 @@
+---
+RNG_SEED: -1
+MODULE: 'cifar_resnet50'
+GPUS: '1,2,3,4'
+NUM_WORKERS_PER_GPU: 1
+VERSION: 'cifar_resnet50_kd_from_res101_0.5_5'
+
+DATASET:
+    DATASET_NAME: 'cifar100_original'
+    ROOT_PATH: 'data/cifar-100'
+    TRAIN_SPLIT: 'train'
+    VAL_SPLIT: 'val'
+    TOY: True
+
+NETWORK:
+    PRETRAINED_MODEL: ''
+    PRETRAINED_LOADING_METHOD: 'standard'
+    TRAINING_STRATEGY: 'knowledge_distillation'
+    NUM_ADDITIONAL_HEADS: 1
+    MAIN:
+        NUM_CLASS: 100
+
+TEACHER:
+    MODULE: 'cifar_resnet101'
+    PRETRAINED_MODEL: 'ckpts/cifar100_cresnet101_data_parallel/best.pth'
+    PRETRAINED_LOADING_METHOD: 'standard_with_classifier'
+    KD_LOSS_FUNCTION: 'loss_fn_kd'
+    ALPHA: 0.5
+    TEMPERATURE: 5
+
+
+TRAIN:
+    BATCH_IMAGES: 128
+    LR: 0.1
+    MOMENTUM: 0.9
+    WEIGHT_DECAY: 0.0005
+    OPTIMIZER: 'SGD'
+    LR_STEPS:
+        - 60
+        - 120
+        - 160
+    LR_DECAY: 0.2
+    ASPECT_GROUPING: False
+    SHUFFLE: True
+    BEGIN_EPOCH: 0
+    END_EPOCH: 200
+
+VAL:
+    BATCH_IMAGES: 128
+    SHUFFLE: False
