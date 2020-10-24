@@ -62,6 +62,17 @@ _C.NETWORK.HEAVY.BLOCK = 'BasicBlock'
 _C.NETWORK.HEAVY.CONV_LAYER = 'conv5x5'
 
 #----------------------------------------
+#--------- Teaacher Related options -----
+#----------------------------------------
+_C.TEACHER = edict()
+_C.TEACHER.MODULE = 'cifar_resnet101'
+_C.TEACHER.PRETRAINED_MODEL = 'ckpts/cifar100_cresnet101_data_parallel/best.pth'
+_C.TEACHER.KD_LOSS_FUNCTION = 'loss_fn_kd'
+_C.TEACHER.ALPHA = 0.5
+_C.TEACHER.TEMPERATURE = 10
+_C.TEACHER.PRETRAINED_LOADING_METHOD = 'standard_with_classifier'
+
+#----------------------------------------
 #--------- Policy Related Options -------
 #----------------------------------------
 _C.POLICY = edict()
