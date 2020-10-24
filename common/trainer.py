@@ -18,6 +18,7 @@ import torch.nn as nn
 from functions.val import do_validation
 from common.utils import to_cuda
 from common.gumbel_softmax import gumbel_softmax
+from common.losses import loss_fn_kd
 
 # Define the PolicyVec here
 PolicyVec = {
@@ -61,6 +62,7 @@ def train(config,
         criterion=nn.CrossEntropyLoss(),
         policy_net=None,
         policy_optimizer=None,
+        teacher_net=None,
         rank=None,
         batch_end_callbacks=None,
         epoch_end_callbacks=None):
@@ -83,6 +85,10 @@ def train(config,
         # policy net to train
         if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
             policy_net.train()
+
+        # teacher net to eval
+        if config.NETWORK.TRAINING_STRATEGY == 'knowledge_distillation':
+            teacher_net.eval()
 
         # reset the train metrics
         train_metrics.reset()
@@ -121,6 +127,19 @@ def train(config,
                 loss = criterion(outputs, labels)
                 for output in additional_outputs:
                     loss += criterion(output, labels)
+
+            elif config.NETWORK.TRAINING_STRATEGY == 'knowledge_distillation':
+                teacher_outputs = teacher_net(images)
+                outputs = net(images)
+
+                # combine both the losses using params, that come along with the teacher
+                alpha = config.TEACHER.ALPHA
+                temp = config.TEACHER.TEMPERATURE
+
+                loss_kd = eval(config.TEACHER.KD_LOSS_FUNCTION)(outputs, teacher_outputs, alpha, temp)
+                loss_cls = criterion(outputs, labels)
+
+                loss = loss_kd + loss_cls * (1-alpha)
 
             else:
                 outputs = net(images)
