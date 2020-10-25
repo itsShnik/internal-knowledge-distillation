@@ -18,7 +18,7 @@ import torch.nn as nn
 from functions.val import do_validation
 from common.utils import to_cuda
 from common.gumbel_softmax import gumbel_softmax
-from common.losses import loss_fn_kd
+from common.losses import loss_fn_kd, loss_fn_kd_frozen_teacher
 
 # Define the PolicyVec here
 PolicyVec = {
@@ -125,8 +125,17 @@ def train(config,
             elif config.NETWORK.TRAINING_STRATEGY == 'AdditionalHeads':
                 outputs, additional_outputs = net(images)
                 loss = criterion(outputs, labels)
-                for output in additional_outputs:
-                    loss += criterion(output, labels)
+                for additional_output in additional_outputs:
+                    additional_loss = criterion(additional_output, labels)
+
+                    if config.USE_KD_LOSS:
+                        alpha = config.ALPHA
+                        temp = config.TEMPERATURE
+
+                        loss_kd = eval(config.KD_LOSS_FUNCTION)(additional_output, outputs, alpha, temp)
+                        additional_loss = loss_kd + additional_loss * (1-alpha)
+
+                    loss += additional_loss
 
             elif config.NETWORK.TRAINING_STRATEGY == 'knowledge_distillation':
                 teacher_outputs = teacher_net(images)
