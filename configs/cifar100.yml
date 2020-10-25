@@ -3,7 +3,11 @@ RNG_SEED: -1
 MODULE: 'cifar_resnet101'
 GPUS: '1,2,3,4'
 NUM_WORKERS_PER_GPU: 1
-VERSION: 'cifar100_cresnet101_AH_50_random_data_parallel'
+VERSION: 'cifar100_cresnet101_AH_50_kd_run_1_0.5_5'
+ALPHA: 0.5
+TEMPERATURE: 5
+USE_KD_LOSS: True
+KD_LOSS_FUNCTION: 'loss_fn_kd'
 
 DATASET:
     DATASET_NAME: 'cifar100_original'
