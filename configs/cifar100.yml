@@ -3,9 +3,9 @@ RNG_SEED: -1
 MODULE: 'cifar_resnet101'
 GPUS: '1,2,3,4'
 NUM_WORKERS_PER_GPU: 1
-VERSION: 'cifar100_cresnet101_AH_50_kd_run_1_0.5_5'
+VERSION: 'cifar100_cresnet101_AH24_ikd_run1_0.5_10'
 ALPHA: 0.5
-TEMPERATURE: 5
+TEMPERATURE: 10
 USE_KD_LOSS: True
 KD_LOSS_FUNCTION: 'loss_fn_kd'
 
@@ -21,6 +21,8 @@ NETWORK:
     PRETRAINED_LOADING_METHOD: 'standard'
     TRAINING_STRATEGY: 'AdditionalHeads'
     NUM_ADDITIONAL_HEADS: 1
+    ADDITIONAL_MASK_FUNCTIONS:
+        - 'generate_additional_head_masks_to_res24'
     MAIN:
         NUM_CLASS: 100
 

@@ -7,7 +7,7 @@ import torch.nn as nn
 #----------------------------------------
 #--------- Common imports ---------------
 #----------------------------------------
-from common.utils import generate_additional_head_masks_to_res50
+from common.utils import *
 
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
@@ -132,7 +132,8 @@ class ResNet(nn.Module):
 
     def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
-                 norm_layer=None, training_strategy ='standard', num_additional_heads=1, **kwargs):
+                 norm_layer=None, training_strategy ='standard', num_additional_heads=1,
+                 additional_mask_functions=None, **kwargs):
         super(ResNet, self).__init__()
         self.training_strategy = training_strategy
         self.num_additional_heads = num_additional_heads
@@ -176,25 +177,25 @@ class ResNet(nn.Module):
             if self.num_additional_heads >= 1:
                 self.additional_avgpool_1 = nn.AdaptiveAvgPool2d((1, 1))
                 self.additional_fc_1 = nn.Linear(512 * block.expansion, num_classes)
-                self.additional_masks_1 = generate_additional_head_masks_to_res50()
+                self.additional_masks_1 = eval(additional_mask_functions[0])()
                 print(f"Additional Masks 1 = {self.additional_masks_1}")
 
             if self.num_additional_heads >= 2:
                 self.additional_avgpool_2 = nn.AdaptiveAvgPool2d((1, 1))
                 self.additional_fc_2 = nn.Linear(512 * block.expansion, num_classes)
-                self.additional_masks_2 = generate_additional_head_masks_to_res50()
+                self.additional_masks_2 = eval(additional_mask_functions[1])()
                 print(f"Additional Masks 2 = {self.additional_masks_2}")
 
             if self.num_additional_heads >= 3:
                 self.additional_avgpool_3 = nn.AdaptiveAvgPool2d((1, 1))
                 self.additional_fc_3 = nn.Linear(512 * block.expansion, num_classes)
-                self.additional_masks_3 = generate_additional_head_masks_to_res50()
+                self.additional_masks_3 = eval(additional_mask_functions[2])()
                 print(f"Additional Masks 3 = {self.additional_masks_3}")
 
             if self.num_additional_heads >= 4:
                 self.additional_avgpool_4 = nn.AdaptiveAvgPool2d((1, 1))
                 self.additional_fc_4 = nn.Linear(512 * block.expansion, num_classes)
-                self.additional_masks_4 = generate_additional_head_masks_to_res50()
+                self.additional_masks_4 = eval(additional_mask_functions[3])()
                 print(f"Additional Masks 4 = {self.additional_masks_4}")
 
         for m in self.modules():
@@ -253,7 +254,7 @@ class ResNet(nn.Module):
                 additional_x_output = x.clone()
                 for layer_ind, layer in enumerate(self.all_layers):
                     for block_ind, block in enumerate(layer):
-                        if layer_ind != 2 or block_ind in eval(f'self.additional_masks_{i}'):
+                        if block_ind in eval(f'self.additional_masks_{i}')[layer_ind]:
                             additional_x_output = block(additional_x_output)
 
                 additional_x_output = eval(f'self.additional_avgpool_{i}')(additional_x_output)
