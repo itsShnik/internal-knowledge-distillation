@@ -38,7 +38,7 @@ def main():
     args, config = parse_args()
 
     # initialize wandb
-    wandb.init(project="adaptive-finetuning-resnet", name=config.VERSION, config=config)
+    wandb.init(project=config.PROJECT, name=config.VERSION, config=config)
 
     train_net(args, config)
     if args.do_test and (rank is None or rank == 0):
