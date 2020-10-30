@@ -1,12 +1,12 @@
 ---
 RNG_SEED: 1
 MODULE: 'cifar_resnet101'
-GPUS: '1,2,3,4'
+GPUS: '1,2'
 NUM_WORKERS_PER_GPU: 1
-VERSION: 'cifar100_cresnet101_AH50_max_retrain'
+VERSION: 'cifar100_cresnet101_AH50_run_4'
 ALPHA: 0.5
 TEMPERATURE: 5
-USE_KD_LOSS: True
+USE_KD_LOSS: False
 KD_LOSS_FUNCTION: 'loss_fn_kd'
 
 DATASET:
@@ -37,12 +37,9 @@ TRAIN:
         - 120
         - 160
         - 200
-        - 220
         - 240
-        - 250
         - 260
-        - 265
-        - 270
+        - 280
     LR_DECAY: 0.2
     ASPECT_GROUPING: False
     SHUFFLE: True
