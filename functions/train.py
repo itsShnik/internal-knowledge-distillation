@@ -45,6 +45,7 @@ def train_net(args, config):
     # manually set random seed
     if config.RNG_SEED > -1:
         np.random.seed(config.RNG_SEED)
+        torch.manual_seed(config.RNG_SEED)
         torch.random.manual_seed(config.RNG_SEED)
         torch.cuda.manual_seed_all(config.RNG_SEED)
 
