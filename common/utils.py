@@ -51,6 +51,19 @@ def generate_additional_head_masks_to_res24():
 
     return masks
 
+def generate_additional_head_masks_to_res18():
+    """
+    From every group (layer) take the first and the last block
+    """
+    first_layer = [0,2]
+    second_layer = [0,3]
+    third_layer = [0,5]
+    fourth_layer = [0,2]
+
+    masks = [first_layer, second_layer, third_layer, fourth_layer]
+
+    return masks
+
 def smart_model_load(model, pretrain_state_dict, loading_method='standard'):
 
     # Pass the model and the pretrained state_dict into the loading method
