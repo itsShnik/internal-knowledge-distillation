@@ -8,6 +8,7 @@ import wandb
 #--------- Torch related imports --------
 #----------------------------------------
 import numpy as np
+import random
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -48,6 +49,9 @@ def train_net(args, config):
         torch.manual_seed(config.RNG_SEED)
         torch.random.manual_seed(config.RNG_SEED)
         torch.cuda.manual_seed_all(config.RNG_SEED)
+        random.seed(config.RNG_SEED)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
     # cudnn
     torch.backends.cudnn.benchmark = False
@@ -175,12 +179,12 @@ def train_net(args, config):
         val_loader = make_dataloader(config, mode='val', distributed=False)
 
     # wandb logging
-    #wandb.watch(model, log='all')
-    #if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
-        #wandb.watch(policy_model, log='all')
+    wandb.watch(model, log='all')
+    if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
+        wandb.watch(policy_model, log='all')
 
-    #if config.NETWORK.TRAINING_STRATEGY == 'knowledge_distillation':
-        #wandb.watch(teacher_model, log='all')
+    if config.NETWORK.TRAINING_STRATEGY == 'knowledge_distillation':
+        wandb.watch(teacher_model, log='all')
 
     # set up the initial learning rate
     initial_lr = config.TRAIN.LR
