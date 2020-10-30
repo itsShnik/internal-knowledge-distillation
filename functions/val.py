@@ -6,8 +6,8 @@ import torch
 #----------------------------------------
 #--------- Common and utils imports -----
 #----------------------------------------
-from common.utils import to_cuda
-from common.gumbel_softmax import gumbel_softmax
+from common.utils.misc import to_cuda
+from common.utils.gumbel_softmax import gumbel_softmax
 
 @torch.no_grad()
 def do_validation(config, net, val_loader, policy_net=None):

@@ -21,7 +21,7 @@ from modules.networks_for_modified_resnet import *
 #--------- Common and utils -------------
 #----------------------------------------
 from functions.config import config, update_config
-from common.utils import smart_model_load
+from common.utils.load import smart_model_load
 from functions.val import do_validation
 from dataloaders.build import make_dataloader, build_dataset
 

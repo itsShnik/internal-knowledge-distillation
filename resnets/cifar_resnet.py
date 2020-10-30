@@ -7,7 +7,7 @@ import torch.nn as nn
 #----------------------------------------
 #--------- Common imports ---------------
 #----------------------------------------
-from common.utils import *
+from common.utils.masks import *
 
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
