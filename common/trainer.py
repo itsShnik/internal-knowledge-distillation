@@ -17,9 +17,9 @@ import torch.nn as nn
 #--------- Local file imports -----------
 #----------------------------------------
 from functions.val import do_validation
-from common.utils import to_cuda
-from common.gumbel_softmax import gumbel_softmax
-from common.losses import loss_fn_kd, loss_fn_kd_frozen_teacher, calculate_loss_and_accuracy
+from common.utils.misc import to_cuda
+from common.utils.gumbel_softmax import gumbel_softmax
+from common.utils.losses import loss_fn_kd, loss_fn_kd_frozen_teacher, calculate_loss_and_accuracy
 
 # Define the PolicyVec here
 PolicyVec = {
