@@ -14,7 +14,6 @@ import torch.optim as optim
 import torch.distributed as distributed
 import torchvision.models as models
 from torch.nn.parallel import DistributedDataParallel as DDP
-from torchsummary import summary
 
 #----------------------------------------
 #--------- Model related imports --------
@@ -31,8 +30,9 @@ from dataloaders.build import make_dataloader, build_dataset
 #----------------------------------------
 #--------- Imports from common ----------
 #----------------------------------------
-from common.optim import *
-from common.utils import smart_model_load
+from common.utils.optim import *
+from common.utils.load import smart_model_load
+from common.utils.misc import summary_parameters
 from common.trainer import PolicyVec, train
 from common.metrics.train_metrics import TrainMetrics
 from common.metrics.val_metrics import ValMetrics
@@ -106,15 +106,15 @@ def train_net(args, config):
         # summarize the model
         if rank == 0:
             print("summarizing the main network")
-            print(model)
+            summary_parameters(model)
 
             if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
                 print("summarizing the policy network")
-                print(policy_model)
+                summary_parameters(policy_model)
 
             if config.NETWORK.TRAINING_STRATEGY == 'knowledge_distillation':
                 print("Summarizing the teacher model")
-                print(teacher_model)
+                summary_parameters(policy_model)
 
         # dataloaders for training, val and test set
         train_loader = make_dataloader(config, mode='train', distributed=True, num_replicas=world_size, rank=rank)
@@ -159,22 +159,16 @@ def train_net(args, config):
                 teacher_model = teacher_model.cuda()
 
         # summarize the model
-        print("\n############################################################")
         print("summarizing the model")
-        print(model)
-        print("############################################################\n")
+        summary_parameters(model)
 
         if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
-            print("\n############################################################")
             print("Summarizing the policy model")
-            print(policy_model)
-            print("############################################################\n")
+            summary_parameters(policy_model)
 
         if config.NETWORK.TRAINING_STRATEGY == 'knowledge_distillation':
-            print("\n############################################################")
             print("Summarizing the teacher model")
-            print(teacher_model)
-            print("############################################################\n")
+            summary_parameters(teahcer_model)
 
         # dataloaders for training and test set
         train_loader = make_dataloader(config, mode='train', distributed=False)
