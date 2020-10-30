@@ -14,10 +14,11 @@ def generate_additional_head_masks_to_res50():
     fourth_layer = [*range(3)]
 
     # Third layer
-    first_index = [0]
-    last_index = [22]
-    rest_of_the_indices = random.sample(range(1,22), 4)
-    third_layer = first_index + rest_of_the_indices + last_index
+    #first_index = [0]
+    #last_index = [22]
+    #rest_of_the_indices = random.sample(range(1,22), 4)
+    #third_layer = first_index + rest_of_the_indices + last_index
+    third_layer = [0,3,8,11,14,22]
 
     masks = [first_layer, second_layer, third_layer, fourth_layer]
 
