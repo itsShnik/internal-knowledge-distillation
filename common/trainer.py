@@ -32,13 +32,7 @@ BatchEndParam = namedtuple('BatchEndParams',
                            ['epoch',
                             'nbatch',
                             'rank',
-                            'add_step',
-                            'data_in_time',
-                            'data_transfer_time',
-                            'forward_time',
-                            'backward_time',
-                            'optimizer_time',
-                            'metric_time'])
+                            'add_step'])
 
 def _multiple_callbacks(callbacks, *args, **kwargs):
     """Sends args and kwargs to any configured callbacks.
@@ -101,17 +95,8 @@ def train(config,
         for nbatch, batch in enumerate(train_loader):
             global_steps = len(train_loader) * epoch + nbatch
 
-            # record time
-            data_in_time = time.time() - end_time
-
             # transfer data to GPU
-            data_transfer_time = time.time()
             images, labels = to_cuda(batch)
-            data_transfer_time = time.time() - data_transfer_time
-
-
-            # forward time
-            forward_time = time.time()
 
             # check for policy net
             if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
@@ -180,34 +165,24 @@ def train(config,
                 train_metrics.store('training_loss', loss.item(), 'Loss')
                 train_metrics.store('training_accuracy', accuracy, 'Accuracy')
 
-            forward_time = time.time() - forward_time
-
             # clear the gradients
             optimizer.zero_grad()
             if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
                 policy_optimizer.zero_grad()
 
             # backward time
-            backward_time = time.time()
             loss.backward()
-            backward_time = time.time() - backward_time
 
             # optimizer time
-            optimizer_time = time.time()
             optimizer.step()
             if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
                 policy_optimizer.step()
-            optimizer_time = time.time() - optimizer_time
 
             
 
             # execute batch_end_callbacks
             if batch_end_callbacks is not None:
-                batch_end_params = BatchEndParam(epoch=epoch, nbatch=nbatch, add_step=True, rank=rank,
-                                                 data_in_time=data_in_time, data_transfer_time=data_transfer_time,
-                                                 forward_time=forward_time, backward_time=backward_time,
-                                                 optimizer_time=optimizer_time, metric_time=metric_time
-                                                 )
+                batch_end_params = BatchEndParam(epoch=epoch, nbatch=nbatch, add_step=True, rank=rank)
                 _multiple_callbacks(batch_end_callbacks, batch_end_params)
 
 
@@ -222,8 +197,9 @@ def train(config,
                     table.add_row([metric_name, metric.current_value])
                 print(table)
 
-            # update end time
-            end_time = time.time()
+        # update end time
+        end_time = time.time() - end_time
+        print(f'Epoch {epoch} finished in {end_time}s!!')
 
         # First do validation at the end of each epoch
         if config.NETWORK.TRAINING_STRATEGY == 'AdditionalHeads':
@@ -249,6 +225,7 @@ def train(config,
         # Log both the training and validation metrics
         train_metrics.wandb_log(epoch)
         val_metrics.wandb_log(epoch)
+        wandb.log({'Epoch Time':end_time}, step=epoch)
 
         # print the validation accuracy
         print('\n-----------------')
