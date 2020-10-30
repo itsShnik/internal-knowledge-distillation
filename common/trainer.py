@@ -5,6 +5,7 @@ import os
 import time
 from collections import namedtuple
 import wandb
+from prettytable import PrettyTable
 
 #----------------------------------------
 #--------- Torch related imports --------
@@ -18,7 +19,7 @@ import torch.nn as nn
 from functions.val import do_validation
 from common.utils import to_cuda
 from common.gumbel_softmax import gumbel_softmax
-from common.losses import loss_fn_kd, loss_fn_kd_frozen_teacher
+from common.losses import loss_fn_kd, loss_fn_kd_frozen_teacher, calculate_loss_and_accuracy
 
 # Define the PolicyVec here
 PolicyVec = {
@@ -120,20 +121,37 @@ def train(config,
                 policy_decisions = policy_decisions + policy.clone().detach().sum(0)
                 policy_max += policy.size(0)
                 outputs = net(images, policy)
-                loss = criterion(outputs, labels)
+                loss, accuracy = calculate_loss_and_accuracy(criterion, outputs, labels)
+
+                # store the obtained metrics
+                train_metrics.store('training_loss', loss.item(), 'Loss')
+                train_metrics.store('training_accuracy', accuracy, 'Accuracy')
 
             elif config.NETWORK.TRAINING_STRATEGY == 'AdditionalHeads':
                 outputs, additional_outputs = net(images)
-                loss = criterion(outputs, labels)
-                for additional_output in additional_outputs:
-                    additional_loss = criterion(additional_output, labels)
+                loss, accuracy = calculate_loss_and_accuracy(criterion, outputs, labels)
+
+                # Store the metrics obtained until now
+                train_metrics.store('training_loss', loss.item(), 'Loss')
+                train_metrics.store('training_accuracy', accuracy, 'Accuracy')
+
+                for i, additional_output in enumerate(additional_outputs):
+                    additional_loss, additional_accuracy = calculate_loss_and_accuracy(criterion, additional_output, labels)
+
+                    # log the additional branch classification loss and training acc
+                    train_metrics.store(f'additional_training_loss_{i+1}', additional_loss.item(), 'Loss')
+                    train_metrics.store(f'additional_training_accuracy_{i+1}', additional_accuracy, 'Accuracy')
 
                     if config.USE_KD_LOSS:
                         alpha = config.ALPHA
                         temp = config.TEMPERATURE
 
                         loss_kd = eval(config.KD_LOSS_FUNCTION)(additional_output, outputs, alpha, temp)
-                        additional_loss = loss_kd + additional_loss * (1-alpha)
+                        additional_loss = loss_kd * (alpha * temp * temp) + additional_loss * (1-alpha)
+
+                        # Store the KLDiv between the main and this branch
+                        train_metrics.store(f'kl_div_with_branch_{i+1}', loss_kd.item(), 'Loss')
+
 
                     loss += additional_loss
 
@@ -146,20 +164,23 @@ def train(config,
                 temp = config.TEACHER.TEMPERATURE
 
                 loss_kd = eval(config.TEACHER.KD_LOSS_FUNCTION)(outputs, teacher_outputs, alpha, temp)
-                loss_cls = criterion(outputs, labels)
+                loss_cls, accuracy = calculate_loss_and_accuracy(criterion, outputs, labels)
 
-                loss = loss_kd + loss_cls * (1-alpha)
+                train_metrics.store(f'kl_div_student_teahcer', loss_kd.item(), 'Loss')
+                train_metrics.store(f'training_loss', loss_cls.item(), 'Loss')
+                train_metrics.store(f'training_accuracy', accuracy, 'Accuracy')
+
+                loss = loss_kd * (alpha * temp * temp) + loss_cls * (1-alpha)
 
             else:
                 outputs = net(images)
-                loss = criterion(outputs, labels)
+                loss, accuracy = calculate_loss_and_accuracy(criterion, outputs, labels)
+
+                # store the obtained metrics
+                train_metrics.store('training_loss', loss.item(), 'Loss')
+                train_metrics.store('training_accuracy', accuracy, 'Accuracy')
 
             forward_time = time.time() - forward_time
-
-            # update training metrics
-            metric_time = time.time()
-            train_metrics.update(outputs, labels, loss.item())
-            metric_time = time.time() - metric_time
 
             # clear the gradients
             optimizer.zero_grad()
@@ -178,14 +199,7 @@ def train(config,
                 policy_optimizer.step()
             optimizer_time = time.time() - optimizer_time
 
-            # Log the optimizer stats -- LR
-            for i, param_group in enumerate(optimizer.param_groups):
-                wandb.log({f'LR_{i}': param_group['lr']})
-
-            # Log the optim stats for Policy Optim
-            if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
-                for i, param_group in enumerate(policy_optimizer.param_groups):
-                    wandb.log({f'Policy_LR_{i}': param_group['lr']})
+            
 
             # execute batch_end_callbacks
             if batch_end_callbacks is not None:
@@ -199,9 +213,14 @@ def train(config,
 
             if nbatch % 100 == 0:
                 # Print accuracy and loss
-                metrics = train_metrics.get()
-                wandb.log({'Batch Accuracy': metrics["batch_accuracy"], 'Train Accuracy': metrics['training_accuracy'], 'Train Loss':metrics['training_loss']})
-                print('[Rank: {}] [Epoch: {}/{}] [Batch: {}/{}] Batch Accuracy: {:.4f} Training Accuracy: {:.4f} Loss: {}'.format(0 if rank is None else rank, epoch, config.TRAIN.END_EPOCH, nbatch, len(train_loader), metrics["batch_accuracy"],  metrics["training_accuracy"], metrics["training_loss"]))
+                print('\n---------------------------------')
+                print(f'[Rank: {rank if rank is not None else 0}], [Epoch: {epoch}/{config.TRAIN.END_EPOCH}], [Batch: {nbatch}/{len(train_loader)}]')
+                print('-----------------------------------\n')
+
+                table = PrettyTable(['Metric', 'Value'])
+                for metric_name, metric in train_metrics.all_metrics.items():
+                    table.add_row([metric_name, metric.current_value])
+                print(table)
 
             # update end time
             end_time = time.time()
@@ -209,24 +228,37 @@ def train(config,
         # First do validation at the end of each epoch
         if config.NETWORK.TRAINING_STRATEGY == 'AdditionalHeads':
             val_acc, additional_val_acc = do_validation(config, net, val_loader, policy_net=policy_net)
+            # update validation metrics
+            val_metrics.store('val_accuracy', val_acc, 'Accuracy')
+            for i, acc in enumerate(additional_val_acc):
+                val_metrics.store(f'additional_val_accuracy_{i+1}', acc, 'Accuracy')
         else:
             val_acc = do_validation(config, net, val_loader, policy_net=policy_net)
+            # update validation metrics
+            val_metrics.store('val_accuracy', val_acc, 'Accuracy')
 
-        # update validation metrics
-        val_metrics.update(epoch, val_acc)
+        # Log the optimizer stats -- LR
+            for i, param_group in enumerate(optimizer.param_groups):
+                wandb.log({f'LR_{i}': param_group['lr']}, step=epoch)
 
-        # obtain val metrics
-        metrics = val_metrics.get()
+            # Log the optim stats for Policy Optim
+            if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
+                for i, param_group in enumerate(policy_optimizer.param_groups):
+                    wandb.log({f'Policy_LR_{i}': param_group['lr']}, step=epoch)
 
-        # log val metrics
-        if config.NETWORK.TRAINING_STRATEGY == 'AdditionalHeads':
-            for index, acc in enumerate(additional_val_acc):
-                wandb.log({f'Additional Val Acc {index+1}':acc})
-
-        wandb.log({'Val Acc': metrics['current_val_acc'], 'Best Val Acc': metrics['best_val_acc'], 'Best Val Epoch': metrics['best_val_epoch']})
+        # Log both the training and validation metrics
+        train_metrics.wandb_log(epoch)
+        val_metrics.wandb_log(epoch)
 
         # print the validation accuracy
-        print('Validation accuracy for epoch {}: {:.4f}'.format(epoch, metrics["current_val_acc"]))
+        print('\n-----------------')
+        print('Validation Metrics')
+        print('-----------------\n')
+
+        table = PrettyTable(['Metric', 'Current Value', 'Best Value'])
+        for metric_name, metric in val_metrics.all_metrics.items():
+            table.add_row([metric_name, metric.current_value, metric.best_value if 'best_value' in dir(metric) else '----'])
+        print(table)
 
         if epoch_end_callbacks is not None:
             _multiple_callbacks(epoch_end_callbacks, rank=rank if rank is not None else 0, epoch=epoch, net=net, optimizer=optimizer, policy_net=policy_net, policy_optimizer=policy_optimizer, policy_decisions=policy_decisions, policy_max=policy_max, training_strategy=config.NETWORK.TRAINING_STRATEGY)
