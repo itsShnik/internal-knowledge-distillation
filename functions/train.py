@@ -172,7 +172,7 @@ def train_net(args, config):
 
         if config.NETWORK.TRAINING_STRATEGY == 'knowledge_distillation':
             print("Summarizing the teacher model")
-            summary_parameters(teahcer_model)
+            summary_parameters(teacher_model)
 
         # dataloaders for training and test set
         train_loader = make_dataloader(config, mode='train', distributed=False)
