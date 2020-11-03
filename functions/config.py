@@ -20,6 +20,7 @@ _C.POLICY_MODULE = 'resnet8'
 _C.USE_KD_LOSS = False
 _C.ALPHA = 0.5
 _C.TEMPERATURE = 10
+_C.BETA = 1.0
 _C.KD_LOSS_FUNCTION = 'loss_fn_kd'
 _C.PROJECT = 'internal-knowledge-distillation'
 
