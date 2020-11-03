@@ -101,28 +101,33 @@ class Bottleneck(nn.Module):
         self.bn2 = norm_layer(width)
         self.conv3 = conv1x1(width, planes * self.expansion)
         self.bn3 = norm_layer(planes * self.expansion)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU(inplace=False)
         self.downsample = downsample
         self.stride = stride
 
-    def forward(self, x):
+    def forward(self, x, drop_block=False):
         identity = x
-
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-
-        out = self.conv2(out)
-        out = self.bn2(out)
-        out = self.relu(out)
-
-        out = self.conv3(out)
-        out = self.bn3(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
 
-        out += identity
+        if not drop_block:
+            out = self.conv1(x)
+            out = self.bn1(out)
+            out = self.relu(out)
+
+            out = self.conv2(out)
+            out = self.bn2(out)
+            out = self.relu(out)
+
+            out = self.conv3(out)
+            out = self.bn3(out)
+
+            out += identity
+
+        else:
+            out = identity
+
         out = self.relu(out)
 
         return out
@@ -256,6 +261,8 @@ class ResNet(nn.Module):
                     for block_ind, block in enumerate(layer):
                         if block_ind in eval(f'self.additional_masks_{i}')[layer_ind]:
                             additional_x_output = block(additional_x_output)
+                        else:
+                            additional_x_output = block(additional_x_output, drop_block=True)
 
                 additional_x_output = eval(f'self.additional_avgpool_{i}')(additional_x_output)
                 additional_x_output = torch.flatten(additional_x_output, 1)
