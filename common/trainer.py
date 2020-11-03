@@ -112,13 +112,17 @@ def train(config,
                 train_metrics.store('training_loss', loss.item(), 'Loss')
                 train_metrics.store('training_accuracy', accuracy, 'Accuracy')
 
-            elif config.NETWORK.TRAINING_STRATEGY == 'AdditionalHeads':
+            elif config.NETWORK.TRAINING_STRATEGY in ['AdditionalHeads', 'AdditionalStochastic']:
                 outputs, additional_outputs = net(images)
                 loss, accuracy = calculate_loss_and_accuracy(criterion, outputs, labels)
 
                 # Store the metrics obtained until now
                 train_metrics.store('training_loss', loss.item(), 'Loss')
                 train_metrics.store('training_accuracy', accuracy, 'Accuracy')
+
+                # loss multiplier
+                beta = config.BETA
+                loss *= beta
 
                 for i, additional_output in enumerate(additional_outputs):
                     additional_loss, additional_accuracy = calculate_loss_and_accuracy(criterion, additional_output, labels)
@@ -202,7 +206,7 @@ def train(config,
         print(f'Epoch {epoch} finished in {end_time}s!!')
 
         # First do validation at the end of each epoch
-        if config.NETWORK.TRAINING_STRATEGY == 'AdditionalHeads':
+        if config.NETWORK.TRAINING_STRATEGY in ['AdditionalHeads', 'AdditionalStochastic']:
             val_acc, additional_val_acc = do_validation(config, net, val_loader, policy_net=policy_net)
             # update validation metrics
             val_metrics.store('val_accuracy', val_acc, 'Accuracy')
