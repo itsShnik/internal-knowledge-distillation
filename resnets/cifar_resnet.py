@@ -7,6 +7,7 @@ import torch.nn as nn
 #----------------------------------------
 #--------- Common imports ---------------
 #----------------------------------------
+import sys
 from common.utils.masks import *
 
 
@@ -105,7 +106,7 @@ class Bottleneck(nn.Module):
         self.downsample = downsample
         self.stride = stride
 
-    def forward(self, x):
+    def forward(self, x, drop_block=False, drop_rate=0.5):
         identity = x
 
         out = self.conv1(x)
@@ -122,7 +123,12 @@ class Bottleneck(nn.Module):
         if self.downsample is not None:
             identity = self.downsample(x)
 
-        out += identity
+        if drop_block:
+            decision = torch.bernoulli(torch.tensor(drop_rate)).cuda()
+            out = decision * out + identity
+        else:
+            out += identity
+
         out = self.relu(out)
 
         return out
@@ -133,10 +139,11 @@ class ResNet(nn.Module):
     def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
                  norm_layer=None, training_strategy ='standard', num_additional_heads=1,
-                 additional_mask_functions=None, **kwargs):
+                 additional_mask_functions=None, drop_rate=0.5, **kwargs):
         super(ResNet, self).__init__()
         self.training_strategy = training_strategy
         self.num_additional_heads = num_additional_heads
+        self.drop_rate = drop_rate
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
@@ -171,32 +178,44 @@ class ResNet(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
-        if self.training_strategy == 'AdditionalHeads':
+        if self.training_strategy in ['AdditionalHeads', 'AdditionalStochastic']:
 
             # Sorry for the hardcode
             if self.num_additional_heads >= 1:
                 self.additional_avgpool_1 = nn.AdaptiveAvgPool2d((1, 1))
                 self.additional_fc_1 = nn.Linear(512 * block.expansion, num_classes)
-                self.additional_masks_1 = eval(additional_mask_functions[0])()
-                print(f"Additional Masks 1 = {self.additional_masks_1}")
+                if self.training_strategy == 'AdditionalHeads':
+                    self.additional_masks_1 = eval(additional_mask_functions[0])()
+                    print(f"Additional Masks 1 = {self.additional_masks_1}")
+                else:
+                    self.drop_rate = drop_rate
 
             if self.num_additional_heads >= 2:
                 self.additional_avgpool_2 = nn.AdaptiveAvgPool2d((1, 1))
                 self.additional_fc_2 = nn.Linear(512 * block.expansion, num_classes)
-                self.additional_masks_2 = eval(additional_mask_functions[1])()
-                print(f"Additional Masks 2 = {self.additional_masks_2}")
+                if self.training_strategy == 'AdditionalHeads':
+                    self.additional_masks_2 = eval(additional_mask_functions[1])()
+                    print(f"Additional Masks 2 = {self.additional_masks_2}")
+                else:
+                    self.drop_rate = drop_rate
 
             if self.num_additional_heads >= 3:
                 self.additional_avgpool_3 = nn.AdaptiveAvgPool2d((1, 1))
                 self.additional_fc_3 = nn.Linear(512 * block.expansion, num_classes)
-                self.additional_masks_3 = eval(additional_mask_functions[2])()
-                print(f"Additional Masks 3 = {self.additional_masks_3}")
+                if self.training_strategy == 'AdditionalHeads':
+                    self.additional_masks_3 = eval(additional_mask_functions[2])()
+                    print(f"Additional Masks 3 = {self.additional_masks_3}")
+                else:
+                    self.drop_rate = drop_rate
 
             if self.num_additional_heads >= 4:
                 self.additional_avgpool_4 = nn.AdaptiveAvgPool2d((1, 1))
                 self.additional_fc_4 = nn.Linear(512 * block.expansion, num_classes)
-                self.additional_masks_4 = eval(additional_mask_functions[3])()
-                print(f"Additional Masks 4 = {self.additional_masks_4}")
+                if self.training_strategy == 'AdditionalHeads':
+                    self.additional_masks_4 = eval(additional_mask_functions[3])()
+                    print(f"Additional Masks 4 = {self.additional_masks_4}")
+                else:
+                    self.drop_rate = drop_rate
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -239,7 +258,7 @@ class ResNet(nn.Module):
 
         return nn.ModuleList(layers)
 
-    def forward(self, x):
+    def forward(self, x, mode='train'):
         # See note [TorchScript super()]
         x = self.conv1(x)
         x = self.bn1(x)
@@ -273,6 +292,98 @@ class ResNet(nn.Module):
             x = self.fc(x)
 
             return x, return_list
+
+        elif self.training_strategy == 'Stochastic':
+
+            if mode == 'train':
+
+                # Calculate outputs for main branch and then for the other branch
+                for layer in self.all_layers:
+                    for block in layer:
+                        x = block(x, drop_block=True, drop_rate=self.drop_rate)
+
+
+            else:
+                block_count = 0
+                for layer in self.all_layers:
+                    for block in layer:
+                        if block_count % 2 != 0:
+                            x = block(x)
+                        else:
+                            x = block(x, drop_block=True, drop_rate=1.0)
+                        block_count += 1
+
+            x = self.avgpool(x)
+            x = torch.flatten(x, 1)
+            x = self.fc(x)
+
+            return x
+
+        elif self.training_strategy == 'AdditionalStochastic':
+
+            if mode == 'train':
+                return_list = []
+
+                # First calculate the additional branches
+                for i in range(1, self.num_additional_heads+1):
+                    additional_x_output = x.clone()
+                    for layer_ind, layer in enumerate(self.all_layers):
+                        for block_ind, block in enumerate(layer):
+                                additional_x_output = block(additional_x_output, drop_block=True, drop_rate=self.drop_rate)
+
+                    additional_x_output = eval(f'self.additional_avgpool_{i}')(additional_x_output)
+                    additional_x_output = torch.flatten(additional_x_output, 1)
+                    additional_x_output = eval(f'self.additional_fc_{i}')(additional_x_output)
+
+                    return_list.append(additional_x_output)
+
+                # Calculate outputs for main branch and then for the other branch
+                for layer in self.all_layers:
+                    for block in layer:
+                        x = block(x)
+
+                x = self.avgpool(x)
+                x = torch.flatten(x, 1)
+                x = self.fc(x)
+
+                return x, return_list
+
+            else:
+
+                return_list = []
+
+                # First calculate the `every_other_layer_pruning` branch
+                pruning_branch_x = x.clone()
+
+                block_count = 0
+
+
+                for i in range(1, self.num_additional_heads+1):
+                    for layer_ind, layer in enumerate(self.all_layers):
+                        for block_ind, block in enumerate(layer):
+                            if block_count % 2 != 0:
+                                pruning_branch_x = block(pruning_branch_x)
+                            else:
+                                pruning_branch_x = block(pruning_branch_x, drop_block=True, drop_rate=1.0)
+                            block_count += 1
+
+
+                    pruning_branch_x = eval(f'self.additional_avgpool_{i}')(pruning_branch_x)
+                    pruning_branch_x = torch.flatten(pruning_branch_x, 1)
+                    pruning_branch_x = eval(f'self.additional_fc_{i}')(pruning_branch_x)
+
+                    return_list.append(pruning_branch_x)
+
+                # Calculate outputs for main branch and then for the other branch
+                for layer in self.all_layers:
+                    for block in layer:
+                        x = block(x)
+
+                x = self.avgpool(x)
+                x = torch.flatten(x, 1)
+                x = self.fc(x)
+
+                return x, return_list
 
         else:
 
