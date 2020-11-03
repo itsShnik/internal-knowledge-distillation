@@ -210,11 +210,12 @@ def train_net(args, config):
 
     # Load the pre-trained teacher model
     if config.NETWORK.TRAINING_STRATEGY == 'knowledge_distillation':
-        # There must be a pretrained model to load from
-        assert config.TEACHER.PRETRAINED_MODEL != '', "No pre-trained model specified for the teacher"
-        print(f"Loading the teacher network from {config.TEACHER.PRETRAINED_MODEL} ...")
-        pretrain_state_dict = torch.load(config.TEACHER.PRETRAINED_MODEL, map_location = lambda storage, loc: storage)['net_state_dict']
-        smart_model_load(teacher_model, pretrain_state_dict, loading_method=config.TEACHER.PRETRAINED_LOADING_METHOD)
+        # There must be a pretrained model to load from (but not in the case of an apprentice network)
+        # assert config.TEACHER.PRETRAINED_MODEL != '', "No pre-trained model specified for the teacher"
+        if config.TEACHER.PRETRAINED_MODEL != '':
+            print(f"Loading the teacher network from {config.TEACHER.PRETRAINED_MODEL} ...")
+            pretrain_state_dict = torch.load(config.TEACHER.PRETRAINED_MODEL, map_location = lambda storage, loc: storage)['net_state_dict']
+            smart_model_load(teacher_model, pretrain_state_dict, loading_method=config.TEACHER.PRETRAINED_LOADING_METHOD)
 
     # Set up the metrics
     train_metrics = TrainMetrics(config, allreduce=False)
