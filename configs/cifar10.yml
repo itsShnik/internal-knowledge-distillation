@@ -1,9 +1,13 @@
 ---
-RNG_SEED: -1
-MODULE: 'resnet101'
-GPUS: '1,2,3,4'
-NUM_WORKERS_PER_GPU: 4
-VERSION: 'cifar10_resnet101'
+RNG_SEED: 1
+MODULE: 'cifar_resnet101'
+GPUS: '1,2'
+NUM_WORKERS_PER_GPU: 1
+VERSION: 'cifar10_cresnet101'
+ALPHA: 0.5
+TEMPERATURE: 5
+USE_KD_LOSS: True
+KD_LOSS_FUNCTION: 'loss_fn_kd'
 
 DATASET:
     DATASET_NAME: 'cifar10'
@@ -15,35 +19,15 @@ DATASET:
 NETWORK:
     PRETRAINED_MODEL: ''
     PRETRAINED_LOADING_METHOD: 'standard'
+    TRAINING_STRATEGY: 'standard'
+    NUM_ADDITIONAL_HEADS: 1
+    ADDITIONAL_MASK_FUNCTIONS:
+        - 'generate_additional_head_masks_to_res50'
     MAIN:
-        LAYERS:
-            - 4
-            - 4
-            - 4
-        CONV_LAYER: 'conv3x3'
-        BLOCK: 'BasicBlock'
         NUM_CLASS: 10
-    PARALLEL:
-        SWITCH: False
-    LIGHT:
-        LAYERS:
-            - 4
-            - 4
-            - 4
-        SWITCH: False
-        CONV_LAYER: 'conv1x1'
-        BLOCK: 'BasicBlock'
-    HEAVY:
-        LAYERS:
-            - 4
-            - 4
-            - 4
-        SWITCH: False
-        CONV_LAYER: 'conv5x5'
-        BLOCK: 'BasicBlock'
 
 TRAIN:
-    BATCH_IMAGES: 256
+    BATCH_IMAGES: 128
     LR: 0.1
     MOMENTUM: 0.9
     WEIGHT_DECAY: 0.0001
@@ -52,6 +36,10 @@ TRAIN:
         - 60
         - 120
         - 160
+        - 200
+        - 240
+        - 260
+        - 280
     LR_DECAY: 0.2
     ASPECT_GROUPING: False
     SHUFFLE: True
@@ -59,5 +47,5 @@ TRAIN:
     END_EPOCH: 200
 
 VAL:
-    BATCH_IMAGES: 256
+    BATCH_IMAGES: 128
     SHUFFLE: False
