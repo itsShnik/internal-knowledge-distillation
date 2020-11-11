@@ -1,8 +1,8 @@
 ---
 RNG_SEED: -1
-MODULE: 'cifar_resnet50'
+MODULE: 'cifar_resnet101'
 NUM_WORKERS_PER_GPU: 4
-VERSION: 'cifar100_cifar_resnet50_from_cifar_resnet101'
+VERSION: 'cifar100_cresnet101_AH50_max_acc_inference'
 
 DATASET:
     DATASET_NAME: 'cifar100_original'
@@ -10,8 +10,10 @@ DATASET:
     VAL_SPLIT: 'val'
 
 NETWORK:
-    PRETRAINED_MODEL: 'ckpts/cifar100_cifar_resnet101/best.pth'
+    PRETRAINED_MODEL: 'ckpts/cifar100_cresnet101_AH_50_kd_run_1_0.5_5/best.pth'
     PRETRAINED_LOADING_METHOD: 'standard_with_classifier'
+    TRAINING_STRATEGY: 'AdditionalHeads'
+    NUM_ADDITIONAL_HEADS: 1
     MAIN:
         NUM_CLASS: 100
 

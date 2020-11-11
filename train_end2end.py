@@ -22,6 +22,7 @@ def parse_args():
     parser = argparse.ArgumentParser('Train Cognition Network')
     parser.add_argument('--cfg', type=str, help='path to config file')
     parser.add_argument('--dist', help='whether to use distributed training', default=False, action='store_true')
+    parser.add_argument('--data_parallel', help='whether to use data parallel or not', default=False, action='store_true')
     parser.add_argument('--cudnn-off', help='disable cudnn', default=False, action='store_true')
     parser.add_argument('--do_test', help='testing', default=False, action='store_true')
 
@@ -37,7 +38,7 @@ def main():
     args, config = parse_args()
 
     # initialize wandb
-    wandb.init(project="adaptive-finetuning-resnet", name=config.VERSION, config=config)
+    wandb.init(project=config.PROJECT, name=config.VERSION, config=config)
 
     train_net(args, config)
     if args.do_test and (rank is None or rank == 0):

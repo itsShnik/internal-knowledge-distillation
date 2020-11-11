@@ -36,7 +36,7 @@ class Checkpoint():
         if save_all_ckpts and rank == 0:
             torch.save(curr_save_info, os.path.join(self.save_path, f'epoch_{epoch}.pth'))
 
-        if self.val_metrics.updated_best_val and rank == 0:
+        if self.val_metrics.all_metrics['val_accuracy'].updated_best_val and rank == 0:
             print("Saving new best model...")
             torch.save(curr_save_info, os.path.join(self.save_path, f'best.pth'))
             print("Done!!")

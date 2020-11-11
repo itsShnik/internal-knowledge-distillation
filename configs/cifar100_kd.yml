@@ -1,13 +1,9 @@
 ---
-RNG_SEED: 1
-MODULE: 'cifar_resnet101'
-GPUS: '1,2'
+RNG_SEED: -1
+MODULE: 'cifar_resnet50'
+GPUS: '1,2,3,4'
 NUM_WORKERS_PER_GPU: 1
-VERSION: 'cifar100_cresnet101_AH50_run_4'
-ALPHA: 0.5
-TEMPERATURE: 5
-USE_KD_LOSS: False
-KD_LOSS_FUNCTION: 'loss_fn_kd'
+VERSION: 'cifar_resnet50_kd_from_res101_0.5_5'
 
 DATASET:
     DATASET_NAME: 'cifar100_original'
@@ -19,12 +15,19 @@ DATASET:
 NETWORK:
     PRETRAINED_MODEL: ''
     PRETRAINED_LOADING_METHOD: 'standard'
-    TRAINING_STRATEGY: 'AdditionalHeads'
+    TRAINING_STRATEGY: 'knowledge_distillation'
     NUM_ADDITIONAL_HEADS: 1
-    ADDITIONAL_MASK_FUNCTIONS:
-        - 'generate_additional_head_masks_to_res50'
     MAIN:
         NUM_CLASS: 100
+
+TEACHER:
+    MODULE: 'cifar_resnet101'
+    PRETRAINED_MODEL: 'ckpts/cifar100_cresnet101_data_parallel/best.pth'
+    PRETRAINED_LOADING_METHOD: 'standard_with_classifier'
+    KD_LOSS_FUNCTION: 'loss_fn_kd'
+    ALPHA: 0.5
+    TEMPERATURE: 5
+
 
 TRAIN:
     BATCH_IMAGES: 128
@@ -36,15 +39,11 @@ TRAIN:
         - 60
         - 120
         - 160
-        - 200
-        - 240
-        - 260
-        - 280
     LR_DECAY: 0.2
     ASPECT_GROUPING: False
     SHUFFLE: True
     BEGIN_EPOCH: 0
-    END_EPOCH: 300
+    END_EPOCH: 200
 
 VAL:
     BATCH_IMAGES: 128

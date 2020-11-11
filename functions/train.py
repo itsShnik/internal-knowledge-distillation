@@ -8,13 +8,13 @@ import wandb
 #--------- Torch related imports --------
 #----------------------------------------
 import numpy as np
+import random
 import torch
-import torch.nn
+import torch.nn as nn
 import torch.optim as optim
 import torch.distributed as distributed
 import torchvision.models as models
 from torch.nn.parallel import DistributedDataParallel as DDP
-from torchsummary import summary
 
 #----------------------------------------
 #--------- Model related imports --------
@@ -31,8 +31,9 @@ from dataloaders.build import make_dataloader, build_dataset
 #----------------------------------------
 #--------- Imports from common ----------
 #----------------------------------------
-from common.optim import *
-from common.utils import smart_model_load
+from common.utils.optim import *
+from common.utils.load import smart_model_load
+from common.utils.misc import summary_parameters
 from common.trainer import PolicyVec, train
 from common.metrics.train_metrics import TrainMetrics
 from common.metrics.val_metrics import ValMetrics
@@ -45,8 +46,12 @@ def train_net(args, config):
     # manually set random seed
     if config.RNG_SEED > -1:
         np.random.seed(config.RNG_SEED)
+        torch.manual_seed(config.RNG_SEED)
         torch.random.manual_seed(config.RNG_SEED)
         torch.cuda.manual_seed_all(config.RNG_SEED)
+        random.seed(config.RNG_SEED)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
     # cudnn
     torch.backends.cudnn.benchmark = False
@@ -93,42 +98,81 @@ def train_net(args, config):
             # wrap in DDP
             policy_model = DDP(policy_model, device_ids=[local_rank], output_device=local_rank)
 
+        # Check if the strategy is to train a knowledge distillation model
+        if config.NETWORK.TRAINING_STRATEGY == 'knowledge_distillation':
+            # initialize the teacher model
+            teacher_model = eval(config.TEACHER.MODULE)(config=config.TEACHER)
+            teacher_model = teacher_model.cuda()
+
+            # wrap in DDP
+            teacher_model = DDP(policy_model, device_ids=[local_rank], output_device=local_rank)
+
         # summarize the model
         if rank == 0:
             print("summarizing the main network")
-            summary(model, (3, 224, 224))
+            summary_parameters(model)
 
             if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
                 print("summarizing the policy network")
-                summary(policy_model, (3, 64, 64))
+                summary_parameters(policy_model)
+
+            if config.NETWORK.TRAINING_STRATEGY == 'knowledge_distillation':
+                print("Summarizing the teacher model")
+                summary_parameters(policy_model)
 
         # dataloaders for training, val and test set
         train_loader = make_dataloader(config, mode='train', distributed=True, num_replicas=world_size, rank=rank)
         val_loader = make_dataloader(config, mode='val', distributed=True, num_replicas=world_size, rank=rank)
 
     else:
-        # single GPU training
         # set CUDA device in env variables
-        config.GPUS = str(0)
-        torch.cuda.set_device(0)
+        config.GPUS = [*range(len((config.GPUS).split(',')))] if args.data_parallel else str(0)
+        print(f"config.GPUS = {config.GPUS}")
 
         # initialize the model and put is to GPU
         model = eval(config.MODULE)(config=config.NETWORK)
-        model = model.cuda()
 
         # check for policy model
         if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
             policy_model= eval(config.POLICY_MODULE)(config=config.POLICY.NETWORK)
             policy_model = policy_model.cuda()
 
+        # Check if the strategy is to train a knowledge distillation model
+        if config.NETWORK.TRAINING_STRATEGY == 'knowledge_distillation':
+            # initialize the teacher model
+            teacher_model = eval(config.TEACHER.MODULE)(config=config.TEACHER)
+            teacher_model = teacher_model.cuda()
+
+        if args.data_parallel:
+            model = model.cuda()
+            model = nn.DataParallel(model, device_ids=config.GPUS)
+
+            if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
+                policy_model = nn.DataParallel(policy_model, device_ids=config.GPUS)
+
+            if config.NETWORK.TRAINING_STRATEGY == 'knowledge_distillation':
+                teacher_model = nn.DataParallel(teacher_model, device_ids=config.GPUS)
+        else:
+            torch.cuda.set_device(0)
+            model = model.cuda()
+
+            if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
+                policy_model = policy_model.cuda()
+
+            if config.NETWORK.TRAINING_STRATEGY == 'knowledge_distillation':
+                teacher_model = teacher_model.cuda()
+
         # summarize the model
         print("summarizing the model")
-        print(model)
-        summary(model, (3, 64, 64))
+        summary_parameters(model)
 
         if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
             print("Summarizing the policy model")
-            summary(policy_model, (3, 64, 64))
+            summary_parameters(policy_model)
+
+        if config.NETWORK.TRAINING_STRATEGY == 'knowledge_distillation':
+            print("Summarizing the teacher model")
+            summary_parameters(teacher_model)
 
         # dataloaders for training and test set
         train_loader = make_dataloader(config, mode='train', distributed=False)
@@ -138,6 +182,9 @@ def train_net(args, config):
     wandb.watch(model, log='all')
     if config.NETWORK.TRAINING_STRATEGY in PolicyVec:
         wandb.watch(policy_model, log='all')
+
+    if config.NETWORK.TRAINING_STRATEGY == 'knowledge_distillation':
+        wandb.watch(teacher_model, log='all')
 
     # set up the initial learning rate
     initial_lr = config.TRAIN.LR
@@ -161,6 +208,15 @@ def train_net(args, config):
         pretrain_state_dict = torch.load(config.NETWORK.PRETRAINED_MODEL, map_location = lambda storage, loc: storage)['net_state_dict']
         smart_model_load(model, pretrain_state_dict, loading_method=config.NETWORK.PRETRAINED_LOADING_METHOD)
 
+    # Load the pre-trained teacher model
+    if config.NETWORK.TRAINING_STRATEGY == 'knowledge_distillation':
+        # There must be a pretrained model to load from (but not in the case of an apprentice network)
+        # assert config.TEACHER.PRETRAINED_MODEL != '', "No pre-trained model specified for the teacher"
+        if config.TEACHER.PRETRAINED_MODEL != '':
+            print(f"Loading the teacher network from {config.TEACHER.PRETRAINED_MODEL} ...")
+            pretrain_state_dict = torch.load(config.TEACHER.PRETRAINED_MODEL, map_location = lambda storage, loc: storage)['net_state_dict']
+            smart_model_load(teacher_model, pretrain_state_dict, loading_method=config.TEACHER.PRETRAINED_LOADING_METHOD)
+
     # Set up the metrics
     train_metrics = TrainMetrics(config, allreduce=False)
     val_metrics = ValMetrics(config, allreduce=args.dist)
@@ -176,4 +232,4 @@ def train_net(args, config):
         epoch_end_callbacks.append(VisualizationPlotter())
 
     # At last call the training function from trainer
-    train(config=config, net=model, optimizer=optimizer, train_loader=train_loader, train_metrics=train_metrics, val_loader=val_loader, val_metrics=val_metrics, policy_net=policy_model if config.NETWORK.TRAINING_STRATEGY in PolicyVec else None, policy_optimizer=policy_optimizer if config.NETWORK.TRAINING_STRATEGY in PolicyVec else None, rank=rank if args.dist else None, batch_end_callbacks=batch_end_callbacks, epoch_end_callbacks=epoch_end_callbacks)
+    train(config=config, net=model, optimizer=optimizer, train_loader=train_loader, train_metrics=train_metrics, val_loader=val_loader, val_metrics=val_metrics, policy_net=policy_model if config.NETWORK.TRAINING_STRATEGY in PolicyVec else None, policy_optimizer=policy_optimizer if config.NETWORK.TRAINING_STRATEGY in PolicyVec else None, teacher_net=teacher_model if config.NETWORK.TRAINING_STRATEGY == 'knowledge_distillation' else None, rank=rank if args.dist else None, batch_end_callbacks=batch_end_callbacks, epoch_end_callbacks=epoch_end_callbacks)

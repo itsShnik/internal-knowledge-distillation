@@ -4,6 +4,11 @@ To reduce overfitting on CIFAR-100 dataset, changed the initial conv layers
 import torch
 import torch.nn as nn
 
+#----------------------------------------
+#--------- Common imports ---------------
+#----------------------------------------
+from common.utils.masks import *
+
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
            'resnet152', 'resnext50_32x4d', 'resnext101_32x8d',
@@ -96,28 +101,33 @@ class Bottleneck(nn.Module):
         self.bn2 = norm_layer(width)
         self.conv3 = conv1x1(width, planes * self.expansion)
         self.bn3 = norm_layer(planes * self.expansion)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU(inplace=False)
         self.downsample = downsample
         self.stride = stride
 
-    def forward(self, x):
+    def forward(self, x, drop_block=False):
         identity = x
-
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-
-        out = self.conv2(out)
-        out = self.bn2(out)
-        out = self.relu(out)
-
-        out = self.conv3(out)
-        out = self.bn3(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
 
-        out += identity
+        if not drop_block:
+            out = self.conv1(x)
+            out = self.bn1(out)
+            out = self.relu(out)
+
+            out = self.conv2(out)
+            out = self.bn2(out)
+            out = self.relu(out)
+
+            out = self.conv3(out)
+            out = self.bn3(out)
+
+            out += identity
+
+        else:
+            out = identity
+
         out = self.relu(out)
 
         return out
@@ -127,8 +137,11 @@ class ResNet(nn.Module):
 
     def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
-                 norm_layer=None, **kwargs):
+                 norm_layer=None, training_strategy ='standard', num_additional_heads=1,
+                 additional_mask_functions=None, **kwargs):
         super(ResNet, self).__init__()
+        self.training_strategy = training_strategy
+        self.num_additional_heads = num_additional_heads
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
@@ -157,8 +170,38 @@ class ResNet(nn.Module):
                                        dilate=replace_stride_with_dilation[1])
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
                                        dilate=replace_stride_with_dilation[2])
+
+        self.all_layers = nn.ModuleList([self.layer1, self.layer2, self.layer3, self.layer4])
+
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
+
+        if self.training_strategy == 'AdditionalHeads':
+
+            # Sorry for the hardcode
+            if self.num_additional_heads >= 1:
+                self.additional_avgpool_1 = nn.AdaptiveAvgPool2d((1, 1))
+                self.additional_fc_1 = nn.Linear(512 * block.expansion, num_classes)
+                self.additional_masks_1 = eval(additional_mask_functions[0])()
+                print(f"Additional Masks 1 = {self.additional_masks_1}")
+
+            if self.num_additional_heads >= 2:
+                self.additional_avgpool_2 = nn.AdaptiveAvgPool2d((1, 1))
+                self.additional_fc_2 = nn.Linear(512 * block.expansion, num_classes)
+                self.additional_masks_2 = eval(additional_mask_functions[1])()
+                print(f"Additional Masks 2 = {self.additional_masks_2}")
+
+            if self.num_additional_heads >= 3:
+                self.additional_avgpool_3 = nn.AdaptiveAvgPool2d((1, 1))
+                self.additional_fc_3 = nn.Linear(512 * block.expansion, num_classes)
+                self.additional_masks_3 = eval(additional_mask_functions[2])()
+                print(f"Additional Masks 3 = {self.additional_masks_3}")
+
+            if self.num_additional_heads >= 4:
+                self.additional_avgpool_4 = nn.AdaptiveAvgPool2d((1, 1))
+                self.additional_fc_4 = nn.Linear(512 * block.expansion, num_classes)
+                self.additional_masks_4 = eval(additional_mask_functions[3])()
+                print(f"Additional Masks 4 = {self.additional_masks_4}")
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -199,24 +242,53 @@ class ResNet(nn.Module):
                                 base_width=self.base_width, dilation=self.dilation,
                                 norm_layer=norm_layer))
 
-        return nn.Sequential(*layers)
+        return nn.ModuleList(layers)
 
-    def _forward_impl(self, x):
+    def forward(self, x):
         # See note [TorchScript super()]
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
 
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
+        if self.training_strategy == 'AdditionalHeads':
 
-        x = self.avgpool(x)
-        x = torch.flatten(x, 1)
-        x = self.fc(x)
+            return_list = []
 
-        return x
+            # First calculate the additional branches
+            for i in range(1, self.num_additional_heads+1):
+                additional_x_output = x.clone()
+                for layer_ind, layer in enumerate(self.all_layers):
+                    for block_ind, block in enumerate(layer):
+                        if block_ind in eval(f'self.additional_masks_{i}')[layer_ind]:
+                            additional_x_output = block(additional_x_output)
+                        else:
+                            additional_x_output = block(additional_x_output, drop_block=True)
 
-    def forward(self, x):
-        return self._forward_impl(x)
+                additional_x_output = eval(f'self.additional_avgpool_{i}')(additional_x_output)
+                additional_x_output = torch.flatten(additional_x_output, 1)
+                additional_x_output = eval(f'self.additional_fc_{i}')(additional_x_output)
+
+                return_list.append(additional_x_output)
+
+            # Calculate outputs for main branch and then for the other branch
+            for layer in self.all_layers:
+                for block in layer:
+                    x = block(x)
+
+            x = self.avgpool(x)
+            x = torch.flatten(x, 1)
+            x = self.fc(x)
+
+            return x, return_list
+
+        else:
+
+            for layer in self.all_layers:
+                for block in layer:
+                    x = block(x)
+
+            x = self.avgpool(x)
+            x = torch.flatten(x, 1)
+            x = self.fc(x)
+
+            return x

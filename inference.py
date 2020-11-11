@@ -21,7 +21,7 @@ from modules.networks_for_modified_resnet import *
 #--------- Common and utils -------------
 #----------------------------------------
 from functions.config import config, update_config
-from common.utils import smart_model_load
+from common.utils.load import smart_model_load
 from functions.val import do_validation
 from dataloaders.build import make_dataloader, build_dataset
 
@@ -73,7 +73,7 @@ def main():
     Pass the model and val loader for validation
     """
     print("Inference started!!")
-    val_accuracy = do_validation(model, val_loader)
+    val_accuracy = do_validation(config, model, val_loader)
     print(f"Inference complete!!\nAccuracy:{val_accuracy}")
 
     wandb.log({'Accuracy': val_accuracy})

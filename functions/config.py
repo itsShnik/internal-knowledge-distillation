@@ -11,12 +11,17 @@ config = _C
 #----------------------------------------
 #--------- Common Options ---------------
 #----------------------------------------
-_C.RNG_SEED = -1
+_C.RNG_SEED = 1
 _C.MODULE = ''
 _C.GPUS = ''
 _C.NUM_WORKERS_PER_GPU = 4
 _C.VERSION = 'adaptive-finetune'
 _C.POLICY_MODULE = 'resnet8'
+_C.USE_KD_LOSS = False
+_C.ALPHA = 0.5
+_C.TEMPERATURE = 10
+_C.KD_LOSS_FUNCTION = 'loss_fn_kd'
+_C.PROJECT = 'internal-knowledge-distillation'
 
 #----------------------------------------
 #--------- Dataset related options ------
@@ -35,6 +40,9 @@ _C.NETWORK = edict()
 _C.NETWORK.PRETRAINED_MODEL = ''
 _C.NETWORK.PRETRAINED_LOADING_METHOD = 'standard'
 _C.NETWORK.TRAINING_STRATEGY = 'standard'
+_C.NETWORK.ADDITIONAL_MASKS = []
+_C.NETWORK.NUM_ADDITIONAL_HEADS = 1
+_C.NETWORK.ADDITIONAL_MASK_FUNCTIONS = ['generate_additional_head_masks_to_res50']
 
 _C.NETWORK.MAIN = edict()
 _C.NETWORK.MAIN.LAYERS = [4,4,4]
@@ -58,6 +66,17 @@ _C.NETWORK.HEAVY.SWITCH = False
 _C.NETWORK.HEAVY.LAYERS = [4,4,4]
 _C.NETWORK.HEAVY.BLOCK = 'BasicBlock'
 _C.NETWORK.HEAVY.CONV_LAYER = 'conv5x5'
+
+#----------------------------------------
+#--------- Teaacher Related options -----
+#----------------------------------------
+_C.TEACHER = edict()
+_C.TEACHER.MODULE = 'cifar_resnet101'
+_C.TEACHER.PRETRAINED_MODEL = 'ckpts/cifar100_cresnet101_data_parallel/best.pth'
+_C.TEACHER.KD_LOSS_FUNCTION = 'loss_fn_kd'
+_C.TEACHER.ALPHA = 0.5
+_C.TEACHER.TEMPERATURE = 10
+_C.TEACHER.PRETRAINED_LOADING_METHOD = 'standard_with_classifier'
 
 #----------------------------------------
 #--------- Policy Related Options -------
