@@ -3,22 +3,32 @@
 #----------------------------------------
 import random
 
+def generate_additional_head_masks():
+    first_layer = [*range(3)]
+    second_layer = [*range(4)]
+    third_layer = [0,7,15,22]
+    fourth_layer = [*range(3)]
+
+    masks = [first_layer, second_layer, third_layer, fourth_layer]
+
+    return masks
+
 def generate_additional_head_masks_to_res50():
     """
     There are 23 blocks in ResNet101, 6 in ResNet50,
     We need to return a list containing 6 indices,
     conditions: It must contain 0, 22 and rest can be random
     """
-    first_layer = [*range(3)]
-    second_layer = [*range(4)]
-    fourth_layer = [*range(3)]
+    first_layer = [0,1]
+    second_layer = [0,1,2]
+    third_layer = [0,3,6,9,12,15,18,21,22]
+    fourth_layer = [1,2]
 
     # Third layer
     #first_index = [0]
     #last_index = [22]
     #rest_of_the_indices = random.sample(range(1,22), 4)
     #third_layer = first_index + rest_of_the_indices + last_index
-    third_layer = [0,3,8,11,14,22]
 
     masks = [first_layer, second_layer, third_layer, fourth_layer]
 
