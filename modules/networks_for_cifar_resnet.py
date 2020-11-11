@@ -45,6 +45,19 @@ def cifar_resnet24(**kwargs):
 
     return _resnet('resnet24', Bottleneck, [2,2,2,2], **kwargs)
 
+def cifar_resnet44(**kwargs):
+    """
+    Special network to experiment with knowledge distillation ideas
+    """
+
+    return _resnet('resnet44', Bottleneck, [3,4,4,3], **kwargs)
+
+def cifar_resnet47(**kwargs):
+    """
+    Special network to experiment with knowledge distillation ideas
+    """
+
+    return _resnet('resnet47', Bottleneck, [3,4,5,3], **kwargs)
 
 def cifar_resnet50(**kwargs):
     r"""ResNet-50 model from
@@ -55,6 +68,26 @@ def cifar_resnet50(**kwargs):
     """
     return _resnet('resnet50', Bottleneck, [3, 4, 6, 3], **kwargs)
 
+def cifar_resnet53(**kwargs):
+    """
+    Special network to experiment with knowledge distillation ideas
+    """
+
+    return _resnet('resnet53', Bottleneck, [3,4,7,3], **kwargs)
+
+def cifar_resnet56(**kwargs):
+    """
+    Special network to experiment with knowledge distillation ideas
+    """
+
+    return _resnet('resnet54', Bottleneck, [3,4,8,3], **kwargs)
+
+def cifar_resnet59(**kwargs):
+    """
+    Special network to experiment with knowledge distillation ideas
+    """
+
+    return _resnet('resnet56', Bottleneck, [3,4,9,3], **kwargs)
 
 def cifar_resnet101(**kwargs):
     r"""ResNet-101 model from
