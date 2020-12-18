@@ -1,12 +1,12 @@
 ---
-RNG_SEED: 1
+RNG_SEED: 42
 MODULE: 'cifar_resnet101'
 GPUS: '1,2'
 NUM_WORKERS_PER_GPU: 1
-VERSION: 'cifar100_cresnet101_AH50_run_4'
+VERSION: 'cifar100_cresnet101_run2'
 ALPHA: 0.5
 TEMPERATURE: 5
-USE_KD_LOSS: False
+USE_KD_LOSS: True
 KD_LOSS_FUNCTION: 'loss_fn_kd'
 
 DATASET:
@@ -19,7 +19,7 @@ DATASET:
 NETWORK:
     PRETRAINED_MODEL: ''
     PRETRAINED_LOADING_METHOD: 'standard'
-    TRAINING_STRATEGY: 'AdditionalHeads'
+    TRAINING_STRATEGY: 'standard'
     NUM_ADDITIONAL_HEADS: 1
     ADDITIONAL_MASK_FUNCTIONS:
         - 'generate_additional_head_masks_to_res50'
@@ -44,7 +44,7 @@ TRAIN:
     ASPECT_GROUPING: False
     SHUFFLE: True
     BEGIN_EPOCH: 0
-    END_EPOCH: 300
+    END_EPOCH: 200
 
 VAL:
     BATCH_IMAGES: 128
