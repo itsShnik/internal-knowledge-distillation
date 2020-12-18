@@ -307,10 +307,10 @@ class ResNet(nn.Module):
                 block_count = 0
                 for layer in self.all_layers:
                     for block in layer:
-                        if block_count % 2 != 0:
+                        if block_count % 3 != 0:
                             x = block(x)
                         else:
-                            x = block(x, drop_block=True, drop_rate=1.0)
+                            x = block(x, drop_block=True, drop_rate=0.0)
                         block_count += 1
 
             x = self.avgpool(x)
@@ -361,10 +361,10 @@ class ResNet(nn.Module):
                 for i in range(1, self.num_additional_heads+1):
                     for layer_ind, layer in enumerate(self.all_layers):
                         for block_ind, block in enumerate(layer):
-                            if block_count % 2 != 0:
+                            if block_count % 3 != 0:
                                 pruning_branch_x = block(pruning_branch_x)
                             else:
-                                pruning_branch_x = block(pruning_branch_x, drop_block=True, drop_rate=1.0)
+                                pruning_branch_x = block(pruning_branch_x, drop_block=True, drop_rate=0.0)
                             block_count += 1
 
 
