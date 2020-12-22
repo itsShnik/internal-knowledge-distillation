@@ -136,7 +136,8 @@ def train(config,
                         temp = config.TEMPERATURE
 
                         loss_kd = eval(config.KD_LOSS_FUNCTION)(additional_output, outputs, alpha, temp)
-                        additional_loss = loss_kd * (alpha * temp * temp) + additional_loss * (1-alpha)
+                        loss_kd = loss_kd * (alpha * temp * temp) 
+                        additional_loss = loss_kd + additional_loss * (1-alpha)
 
                         # Store the KLDiv between the main and this branch
                         train_metrics.store(f'kl_div_with_branch_{i+1}', loss_kd.item(), 'Loss')
@@ -206,16 +207,11 @@ def train(config,
         print(f'Epoch {epoch} finished in {end_time}s!!')
 
         # First do validation at the end of each epoch
-        if config.NETWORK.TRAINING_STRATEGY in ['AdditionalHeads', 'AdditionalStochastic']:
-            val_acc, additional_val_acc = do_validation(config, net, val_loader, policy_net=policy_net)
-            # update validation metrics
-            val_metrics.store('val_accuracy', val_acc, 'Accuracy')
-            for i, acc in enumerate(additional_val_acc):
-                val_metrics.store(f'additional_val_accuracy_{i+1}', acc, 'Accuracy')
-        else:
-            val_acc = do_validation(config, net, val_loader, policy_net=policy_net)
-            # update validation metrics
-            val_metrics.store('val_accuracy', val_acc, 'Accuracy')
+        val_acc, additional_val_acc = do_validation(config, net, val_loader, policy_net=policy_net)
+        # update validation metrics
+        val_metrics.store('val_accuracy', val_acc, 'Accuracy')
+        for i, acc in enumerate(additional_val_acc):
+            val_metrics.store(f'additional_val_accuracy_{i+1}', acc, 'Accuracy')
 
         # Log the optimizer stats -- LR
             for i, param_group in enumerate(optimizer.param_groups):
