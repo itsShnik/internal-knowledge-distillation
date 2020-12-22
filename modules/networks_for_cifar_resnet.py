@@ -14,8 +14,11 @@ def _resnet(arch, block, layers, **kwargs):
     training_strategy = config.TRAINING_STRATEGY if 'TRAINING_STRATEGY' in config else 'standard'
     num_additional_heads = config.NUM_ADDITIONAL_HEADS if 'NUM_ADDITIONAL_HEADS' in config else 1
     additional_mask_functions = config.ADDITIONAL_MASK_FUNCTIONS if 'ADDITIONAL_MASK_FUNCTIONS' in config else None
+    classifier_hidden_size = config.CLASSIFIER_HIDDEN_SIZE if 'CLASSIFIER_HIDDEN_SIZE' in config else 256
+    classifier_first_dropout = config.CLASSIFIER_FIRST_DROPOUT if 'CLASSIFIER_FIRST_DROPOUT' in config else 0.1
+    classifier_last_dropout = config.CLASSIFIER_LAST_DROPOUT if 'CLASSIFIER_LAST_DROPOUT' in config else 0.5
 
-    model = ResNet(block, layers, num_classes=num_classes, training_strategy=training_strategy, num_additional_heads=num_additional_heads, additional_mask_functions=additional_mask_functions)
+    model = ResNet(block, layers, num_classes=num_classes, training_strategy=training_strategy, num_additional_heads=num_additional_heads, additional_mask_functions=additional_mask_functions, classifier_hidden_size=classifier_hidden_size, classifier_first_dropout=classifier_first_dropout, classifier_last_dropout=classifier_last_dropout)
     return model
 
 
